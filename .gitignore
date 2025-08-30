@@ -1,0 +1,98 @@
+# -----------------------------
+# R / RStudio
+# -----------------------------
+
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio project files
+.Rproj.user/
+
+# Produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token
+.httr-oauth
+
+# knitr / R Markdown cache directories
+*_cache/
+.cache/
+
+# Temporary files from R Markdown
+*.utf8.md
+*.knit.md
+
+# R Environment Variables
+.Renviron
+
+# pkgdown site
+docs/
+
+# Translation temp files
+po/*~
+
+# RStudio Connect folder
+rsconnect/
+
+# -----------------------------
+# Proyecto Shiny / Aplicación
+# -----------------------------
+
+# Archivos de entorno / secretos
+.env
+.env.*
+
+# Carpeta de outputs de Shiny
+www/output/
+
+# Logs y temporales
+*.log
+*.tmp
+*.bak
+
+# -----------------------------
+# MySQL / Bases de datos
+# -----------------------------
+
+# Archivos de base de datos locales
+*.sql
+*.sqlite
+*.db
+
+# MySQL dump o exportaciones
+*.sql.gz
+*.dump
+
+# Archivos de configuración sensibles
+my.cnf
+
+# -----------------------------
+# Docker
+# -----------------------------
+
+# Docker overrides locales
+docker-compose.override.yml
+
+# -----------------------------
+# Paquetes y dependencias locales
+# -----------------------------
+packrat/
+renv/library/
