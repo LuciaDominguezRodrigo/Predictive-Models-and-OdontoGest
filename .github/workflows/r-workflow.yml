@@ -1,0 +1,36 @@
+name: R-CMD-check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  R-CMD-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descargar el repo
+    - uses: actions/checkout@v3
+
+    # 2. Configurar R
+    - name: Set up R
+      uses: r-lib/actions/setup-r@v2
+
+    # 3. Configurar caché de librerías R
+    - name: Cache R packages
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.R_LIBS_USER }}
+        key: ${{ runner.os }}-R-${{ hashFiles('**/DESCRIPTION') }}
+        restore-keys: |
+          ${{ runner.os }}-R-
+
+    # 4. Instalar dependencias
+    - name: Install dependencies
+      run: Rscript -e "install.packages(c('remotes','testthat','bcrypt','mockery'))"
+
+    # 5. Ejecutar tests
+    - name: Run tests
+      run: Rscript -e "testthat::test_dir('tests')"
