@@ -1,12 +1,3 @@
-# =======================================================
-# Shiny App: Demostración de Sobreajuste
-# Autor: Lucía Domínguez Rodrigo
-# Descripción: Genera un dataset simulado, entrena varios 
-# modelos de regresión (LM, RF, XGBoost) y compara 
-# rendimiento en train vs test para ilustrar el sobreajuste.
-# =======================================================
-
-
 # ==================== LIBRERÍAS ====================
 library(shiny)
 library(caret)
@@ -116,9 +107,6 @@ server <- function(input, output, session) {
     df <- datos_modelos()$pred_train
     df_melt <- melt(df, id.vars = c("x", "y"), variable.name = "Modelo", value.name = "Pred")
     
-    # ordenar por x
-    df_melt <- df_melt %>% arrange(Modelo, x)
-    
     ggplot(df_melt, aes(x = x, y = Pred, color = Modelo)) +
       geom_line(size = 1) +
       geom_point(aes(y = y), color = "black", alpha = 0.5) +
@@ -131,10 +119,6 @@ server <- function(input, output, session) {
     req(datos_modelos())
     df <- datos_modelos()$pred_test
     df_melt <- melt(df, id.vars = c("x", "y"), variable.name = "Modelo", value.name = "Pred")
-    
-    # ordenar por x
-    df_melt <- df_melt %>% arrange(Modelo, x)
-    
     
     ggplot(df_melt, aes(x = x, y = Pred, color = Modelo)) +
       geom_line(size = 1) +
