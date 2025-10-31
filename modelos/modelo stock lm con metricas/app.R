@@ -4,12 +4,8 @@
 # Descripción:
 # - Modelo Stock: predice pedidos necesarios de materiales
 #   en una clínica dental (Regresión Lineal con CV) - Diagnóstico Completo.
-#   *** MODIFICACIÓN: Inclusión de Errores Estándar Robustos (HC3) Y LM LOGARÍTMICO ***
-# - Modelo Diagnóstico: predice diagnóstico dental a partir
-#   de variables clínicas simuladas (XGBoost) - Diagnóstico Básico.
 # =======================================================
 
-# ==================== LIBRERÍAS ====================
 library(shiny)
 library(caret)
 library(ggplot2)
@@ -21,32 +17,32 @@ library(Matrix)
 library(car) # Para vif, durbinWatsonTest y crPlots
 library(ppcor) # Para correlaciones parciales (pcor)
 library(broom) # Para tidy, augment, glance
-library(tibble) # Para rownames_to_column (Mejora la gestión de data frames)
+library(tibble) # Para rownames_to_column
 library(sandwich) # Para vcovHC (Errores Estándar Robustos)
-library(lmtest) # Para coeftest y waldtest (Pruebas robustas)
+library(lmtest) # Para coeftest y waldtest
 library(tseries) # Para jarque.bera.test
-
 
 # ==================== UI ====================
 ui <- fluidPage(
   useShinyalert(), 
-  titlePanel("Modelos Regresión Lineal y XGBoost -  Modelo de stock"),
+  titlePanel("Modelos Regresión Lineal y XGBoost -  Modelo de stock (con productos ampliados)"),
   
   tabsetPanel(
-    # ==================== MODELO STOCK (LM CV) ====================
     tabPanel("Modelo Stock",
              sidebarLayout(
                sidebarPanel(
                  actionButton("entrenar_stock", "Entrenar Modelo Stock y Diagnósticos"),
                  tags$hr(),
-                 h4("Exportar Diagnósticos"),
-                 downloadButton("download_diagnostics_stock", "Descargar Diagnósticos por Caso (CSV)")
+                 h4("Exportar Predicciones del Modelo Final"),
+                 # CAMBIO EN LA UI: Renombrado el botón para claridad
+                 downloadButton("download_diagnostics_stock", "Descargar Predicciones (CSV)")
                ),
                mainPanel(
                  tabsetPanel(
-                   tabPanel("Pedido Mes Siguiente (MCO vs Log)", tableOutput("pedido_mes_siguiente")),
-                   
-                   # --- Diagnósticos del Modelo MCO ---
+                   tabPanel("Pedido Mes Siguiente (MCO vs Log)", 
+                            h3("Predicciones del Modelo Final para todo el Dataset"),
+                            p("La siguiente tabla muestra la predicción de pedido para todos los productos en el dataset, comparando el modelo MCO y el Logarítmico."),
+                            tableOutput("pedido_mes_siguiente")),
                    tabPanel("Resumen y Métricas (MCO)", 
                             h3("Métricas CV"), verbatimTextOutput("stock_metrics"),
                             tags$hr(),
@@ -55,56 +51,40 @@ ui <- fluidPage(
                             h3("Resumen del Modelo LM (Coeficientes Robusto - HC3)"), verbatimTextOutput("stock_robust_summary"),
                             tags$hr(),
                             h3("VIF y Durbin-Watson"), verbatimTextOutput("stock_vif_dw")),
-                   
-                   # --- Diagnósticos del Modelo Logarítmico (NUEVO) ---
                    tabPanel("Resumen y Métricas (Logarítmico)",
                             h3("Métricas CV (Log)"), verbatimTextOutput("stock_log_metrics"),
                             tags$hr(),
                             h3("Resumen del Modelo LM Logarítmico (Final)"), verbatimTextOutput("stock_log_summary"),
                             tags$hr(),
                             h3("Resumen del Modelo LM Logarítmico (Coeficientes Robusto - HC3)"), verbatimTextOutput("stock_log_robust_summary")),
-                   
                    tabPanel("Coeficientes e IC 95% (MCO)", verbatimTextOutput("stock_coefs"), 
                             tags$hr(), h3("Matriz de Varianza-Covarianza"), verbatimTextOutput("stock_vcov")),
-                   
                    tabPanel("Análisis de Varianza (ANOVA)", verbatimTextOutput("stock_anova")),
-                   
-                   # --- Pruebas de normalidad ---
                    tabPanel("Normalidad de Residuales",
                             h3("Pruebas de Normalidad de los Residuales (Modelo MCO)"),
                             verbatimTextOutput("stock_normality_tests")),
-                   
-                   # --- Comparación entre Modelos ---
                    tabPanel("Comparación de Modelos (AIC/BIC/F-test)",
                             h3("Comparación AIC/BIC"),
                             verbatimTextOutput("stock_aic_bic"),
                             tags$hr(),
                             h3("Comparación mediante F-test"),
                             verbatimTextOutput("stock_f_test")),
-                   
-                   
                    tabPanel("Correlaciones", 
                             h3("Matriz de Correlación (Variables Numéricas)"), plotOutput("stock_cor_plot", height = "400px", width = "100%"),
                             tags$hr(),
                             h3("Correlaciones Parciales"), verbatimTextOutput("stock_pcor")),
-                   
-                   # --- Gráficos ---
                    tabPanel("Predicción vs Real por Fold", 
                             h3("Predicción vs. Real por Fold (Validación Cruzada) - MCO"),
                             plotOutput("plot_cv_stock", height = "500px", width = "100%")),
-                   
                    tabPanel("Gráficos de Residuales (MCO)", 
                             h3("Residuales vs. Ajustados"), plotOutput("plot_res_fit", height = "400px", width = "100%"),
                             tags$hr(),
                             h3("Normalidad de Residuales (Q-Q)"), plotOutput("plot_qq", height = "400px", width = "100%"),
                             tags$hr(),
                             h3("Histograma de Residuales"), plotOutput("plot_hist_res", height = "400px", width = "100%")),
-                   
                    tabPanel("Gráficos Parciales (car::crPlots)", 
                             h3("Gráficos de Componentes y Residuales"),
                             plotOutput("plot_cr", height = "700px", width = "100%")),
-                   
-                   # --- Diagnósticos de Influencia ---
                    tabPanel("Diagnóstico por Caso e Influencia", 
                             h3("Medidas de Influencia (Top 10 por Distancia de Cook)"),
                             tableOutput("stock_influence_table"),
@@ -116,7 +96,6 @@ ui <- fluidPage(
              )
     ),
     
-    # ==================== MODELO DIAGNÓSTICO (XGBOOST) ====================
     tabPanel("Modelo Diagnóstico",
              sidebarLayout(
                sidebarPanel(
@@ -141,7 +120,6 @@ ui <- fluidPage(
   )
 )
 
-
 # ==================== SERVER ====================
 server <- function(input, output, session) {
   
@@ -150,13 +128,44 @@ server <- function(input, output, session) {
     set.seed(123)
     n <- 1000
     
+    # ---------------------------
+    # Lista de productos (niveles ampliados)
+    # ---------------------------
+    product_levels <- c(
+      "Guantes","Mascarillas","Agujas","cemento",
+      "micro_aplicador",
+      "tetric_evoceram_A2","tetric_evoceram_A3","tetric_evoceram_A35",
+      "tetric_evoflow_A2","tetric_evoflow_A3","tetric_evoflow_A35",
+      "excite_f",
+      "theracal_lc",
+      "papel_articular",
+      "matrices_transparentes",
+      "matrices_seccionales_septomatrix",
+      "automatrix_reposicion_medium_regular",
+      "automatrix_regular_1","automatrix_regular_2","automatrix_regular_3",
+      "automatrix_mango_punta_automate_iii",
+      "cu_as_madera_400u",
+      "acido_jumbo",
+      "ufi_gel_reposicion",
+      "cajas_retenedores_grandes",
+      "alginato_fast_bestdent",
+      "silicona_putty",
+      "silicona_generica",
+      "ketac_cem_easy_mix",
+      "temp_bond",
+      "irm",
+      "variolink_esthetic"
+    )
+    
+    # Simulamos dataset histórico con estos niveles de producto
     dataset_historico <- data.frame(
-      producto = factor(sample(c("Guantes","Mascarillas","Agujas", "cemento"), n, replace = TRUE)),
+      producto = factor(sample(product_levels, n, replace = TRUE)),
       stock_inicio = sample(50:500, n, replace = TRUE),
       pacientes = sample(20:80, n, replace = TRUE),
       pedidos_realizados = sample(50:400, n, replace = TRUE)
     )
     
+    # Generación de la variable target (mantengo la lógica original con ruido)
     dataset_historico$pedidos_necesarios <- with(dataset_historico,
                                                  pmax(0, round(pedidos_realizados + 0.35*(100 - stock_inicio) + rnorm(n,0,5)))
     )
@@ -164,8 +173,9 @@ server <- function(input, output, session) {
     dataset_historico$stock_ratio <- dataset_historico$stock_inicio / pmax(1, dataset_historico$pedidos_realizados)
     dataset_historico$pacientes_ratio <- dataset_historico$pacientes / pmax(1, dataset_historico$stock_inicio)
     
-    # CORRECCIÓN DE FACTOR: Eliminamos niveles no utilizados del factor
-    dataset_historico$producto <- droplevels(dataset_historico$producto) 
+    # CORRECCIÓN DE FACTOR: Aseguramos que los niveles estén completos (aunque no todos aparezcan)
+    dataset_historico$producto <- factor(dataset_historico$producto, levels = product_levels)
+    dataset_historico$producto <- droplevels(dataset_historico$producto)
     
     # === Definición del Control para CV 5-fold ===
     ctrl <- trainControl(method = "cv", number = 5, savePredictions = "final") 
@@ -201,10 +211,9 @@ server <- function(input, output, session) {
     # ----------------------------------------------------
     # === 3. Extracción de Diagnósticos LM MCO ===
     # ----------------------------------------------------
-    
-    # 1. Información de diagnóstico por caso (Mahalanobis fix)
     model_mat <- model.matrix(lm_final)
-    model_vars_numeric <- model_mat[, colnames(model_mat) != "(Intercept)"]
+    model_vars_numeric <- model_mat[, colnames(model_mat) != "(Intercept)", drop = FALSE]
+    #mantengo la amtriz, no reduzco a un vector. Selecciono todo menos el intercepto
     
     diag_case <- augment(lm_final) %>%
       mutate(
@@ -215,55 +224,42 @@ server <- function(input, output, session) {
       ) %>%
       dplyr::select(caso, everything())
     
-    # 2. VIF y Durbin-Watson
     vif_res <- car::vif(lm_final)
     dw_res <- car::durbinWatsonTest(lm_final)
     
-    # 3. Coeficientes e IC - Uso de backticks correcto
     coefs_ic <- confint(lm_final) %>%
       as.data.frame() %>%
       tibble::rownames_to_column("term") %>% 
       rename(conf.low = `2.5 %`, conf.high = `97.5 %`)
     
-    # 4. Matriz Varianza-Covarianza
     vcov_mat <- vcov(lm_final)
-    
-    # 5. ANOVA
     anova_res <- anova(lm_final)
     
-    # 6. Correlaciones parciales
     numeric_vars <- c("stock_inicio", "pacientes", "pedidos_realizados", "stock_ratio", "pacientes_ratio")
     pcor_mat <- tryCatch({
       ppcor::pcor(dataset_historico[, c("pedidos_necesarios", numeric_vars)])$estimate
     }, error = function(e) paste("No se pudo calcular la correlación parcial:", e$message))
     
-    # 7. DFBETAS (para ejemplo)
     dfbetas_res <- as.data.frame(dfbetas(lm_final))
     names(dfbetas_res) <- paste0("DfB_", names(dfbetas_res))
     
-    # Unir medidas de influencia importantes para tabla resumen (ordenar por Cook's D)
     influence_summary <- diag_case %>% 
       dplyr::select(caso, .fitted, .resid, .hat, .cooksd, .std.resid) %>%
       arrange(desc(.cooksd)) %>%
       head(10)
     
-    # 8. Errores estándar robustos (HC3) - LM MCO
     robust_vcov <- vcovHC(lm_final, type = "HC3")
     robust_summary <- coeftest(lm_final, vcov. = robust_vcov)
     
-    # 9. Errores estándar robustos (HC3) - LM Logarítmico (NUEVO)
     robust_vcov_log <- vcovHC(lm_log_final, type = "HC3")
     robust_summary_log <- coeftest(lm_log_final, vcov. = robust_vcov_log)
     
-    # 10. Normalidad de los residuales (Test Shapiro-Wilk y Jarque-Bera)
     shapiro_test <- shapiro.test(residuals(lm_final))
     jarque_test <- tseries::jarque.bera.test(residuals(lm_final))
     
-    # 11. Comparación AIC / BIC / F-test entre modelos (MCO vs Logarítmico)
     aic_comparison <- AIC(lm_final, lm_log_final)
     bic_comparison <- BIC(lm_final, lm_log_final)
     f_test_models <- anova(lm_final, lm_log_final)
-    
     
     list(
       # MCO Original
@@ -288,74 +284,99 @@ server <- function(input, output, session) {
       jarque_test = jarque_test,
       aic_comparison = aic_comparison,
       bic_comparison = bic_comparison,
-      f_test_models = f_test_models
-      
+      f_test_models = f_test_models,
+      # info adicional
+      product_levels = product_levels
     )
   })
   
-  # === Tabla de datos de entrada para la predicción ===
-  output$next_month_data_input <- renderTable({
-    next_month_data_base <- data.frame(
-      producto = factor(c("Guantes","Mascarillas","Agujas", "cemento")),
-      stock_inicio = c(50, 120, 80,90),
-      pacientes = c(200, 320, 150, 150),
-      pedidos_realizados = c(150, 300, 100, 200)
-    )
-    next_month_data_base
-  })
+  # === Tabla de datos de entrada para la predicción (Eliminado, no necesario) ===
+  # output$next_month_data_input <- renderTable({...})
   
   # === Predicción del pedido del mes siguiente (Incluye Logarítmico) ===
+  # CAMBIO #1: Ahora predice para todo el dataset, no solo para 4 ejemplos
+  # =========================================================================
+  # === Predicción del pedido del mes siguiente (Tabla Consolidada) ===
+  # CAMBIO #1: Modificación para calcular y mostrar el promedio por producto
+  # =========================================================================
   output$pedido_mes_siguiente <- renderTable({
     req(modelo_stock_cv())
     
-    # Datos de entrada base
-    next_month_data <- data.frame(
-      producto = factor(c("Guantes", "Mascarillas", "Agujas", "cemento"),
-                        levels = levels(modelo_stock_cv()$dataset$producto)),
-      stock_inicio = c(50, 120, 80, 80),
-      pacientes = c(200, 320, 150, 200),
-      pedidos_realizados = c(150, 300, 100, 200)
-    )
+    # 1. Obtener los datos de predicción para todos los casos (igual que en downloadHandler)
+    data_full <- modelo_stock_cv()$dataset # Dataset completo
     
-    next_month_data$stock_ratio <- next_month_data$stock_inicio / pmax(1, next_month_data$pedidos_realizados)
-    next_month_data$pacientes_ratio <- next_month_data$pacientes / pmax(1, next_month_data$stock_inicio)
+    # Recalcular ratios (asegurando consistencia)
+    data_full$stock_ratio <- data_full$stock_inicio / pmax(1, data_full$pedidos_realizados)
+    data_full$pacientes_ratio <- data_full$pacientes / pmax(1, data_full$stock_inicio)
     
-    # === PREDICCIÓN MCO ORIGINAL ===
-    pred_pedido <- predict(modelo_stock_cv()$modelo, newdata = next_month_data)
-    next_month_data$Pedido_Sugerido <- round(pred_pedido)
+    # Generar predicciones de ambos modelos
+    pred_mco <- predict(modelo_stock_cv()$modelo, newdata = data_full)
+    pred_log <- predict(modelo_stock_cv()$modelo_log, newdata = data_full)
     
-    # === PREDICCIÓN LM LOGARÍTMICO (Reducido) ===
-    pred_log <- predict(modelo_stock_cv()$modelo_log, newdata = next_month_data)
-    next_month_data$Pedido_Reducido <- round(expm1(pred_log)) # expm1 = exp(x) - 1
-    
-    # Intervalos de Confianza (basados en RMSE del MCO original)
+    # Calcular el Intervalo de Confianza (basado en RMSE de CV)
     rmse_mean <- mean(modelo_stock_cv()$modelo$resample$RMSE)
-    t_val <- qt(0.975, df = nrow(modelo_stock_cv()$dataset) - length(coef(modelo_stock_cv()$lm_final)))
-    
+    t_val <- qt(0.975, df = nrow(data_full) - length(coef(modelo_stock_cv()$lm_final)))
     margin_error <- t_val * rmse_mean
+    ic_bajo <- pmax(0, pred_mco - margin_error)
+    ic_alto <- pred_mco + margin_error
     
-    next_month_data$IC_Bajo_95 <- round(pmax(0, pred_pedido - margin_error))
-    next_month_data$IC_Alto_95 <- round(pred_pedido + margin_error)
+    # Crear data frame de predicciones completas
+    predicciones_completas <- data_full %>%
+      dplyr::select(producto, stock_inicio, pacientes, pedidos_realizados, pedidos_necesarios) %>%
+      rename(Real = pedidos_necesarios) %>%
+      mutate(
+        Prediccion_MCO = pred_mco, # Dejamos como números para el cálculo del promedio
+        Prediccion_Log = expm1(pred_log), # Dejamos como números para el cálculo del promedio
+        IC_Bajo_95_MCO = ic_bajo,
+        IC_Alto_95_MCO = ic_alto
+      )
     
-    # Alerta de pedido alto (basada en el MCO original)
-    productos_altos <- next_month_data$producto[next_month_data$Pedido_Sugerido > 400]
+    # 2. AGREGACIÓN: Agrupar por 'producto' y calcular el promedio (media)
+    data_output_agregada <- predicciones_completas %>%
+      group_by(producto) %>%
+      summarise(
+        # Promedio del Real (consumo histórico promedio del producto)
+        Real_Promedio = round(mean(Real)),
+        # Promedio de las Predicciones (el valor que querías)
+        Prediccion_MCO_Promedio = round(mean(Prediccion_MCO)),
+        Prediccion_Log_Promedio = round(mean(Prediccion_Log)),
+        # Promedio del Intervalo de Confianza
+        IC_Bajo_95_Promedio = round(mean(IC_Bajo_95_MCO)),
+        IC_Alto_95_Promedio = round(mean(IC_Alto_95_MCO)),
+        .groups = 'drop' # Quitar la agrupación
+      )
+    
+    # Alerta de pedido alto (basada en el promedio MCO)
+    productos_altos <- data_output_agregada$producto[data_output_agregada$Prediccion_MCO_Promedio > 400]
     if (length(productos_altos) > 0) {
       shinyalert(
-        title = "⚠️ Alerta de pedido alto",
-        text = paste("Se sugiere un pedido alto de:", paste(productos_altos, collapse = ", "), 
-                     "\n(Modelo MCO). Considere la recomendación Logarítmica."),
+        title = "⚠️ Alerta de pedido alto (Promedio)",
+        text = paste("El promedio de pedido sugerido es alto para:", paste(head(unique(productos_altos), 3), collapse = ", "), 
+                     "y otros productos. Considere la recomendación Logarítmica."),
         type = "warning"
       )
     }
     
-    # Devolver tabla con la comparación
-    next_month_data[, c("producto", "Pedido_Sugerido", "Pedido_Reducido", "IC_Bajo_95", "IC_Alto_95")]
-  })
+    # Devolver la tabla agregada (solo 31 filas)
+    data_output_agregada
+    
+  }, 
+  # Opciones de tabla (DataTable para mostrar pocas filas es opcional, pero mantiene el formato)
+  options = list(
+    scrollY = "400px", 
+    paging = FALSE, # Desactivamos paginación ya que hay pocas filas
+    dom = 't' # Mostrar solo la tabla (sin barra de búsqueda, info, etc.)
+  )
+  )
+  # Opciones de tabla para mostrar un gran volumen de datos de forma eficiente
+  options = list(
+    scrollY = "400px", 
+    paging = TRUE, # Permite paginación para no sobrecargar
+    pageLength = 20
+  )
   
   
-  # ==================== PESTAÑA 1: LM MCO ORIGINAL ====================
-  
-  # === Métricas CV (MCO) ===
+
   output$stock_metrics <- renderPrint({
     req(modelo_stock_cv())
     
@@ -379,13 +400,11 @@ server <- function(input, output, session) {
     print(df_res)
   })
   
-  # === Resumen del Modelo LM (MCO final) ===
   output$stock_summary <- renderPrint({
     req(modelo_stock_cv())
     summary(modelo_stock_cv()$lm_final)
   })
   
-  # === Resumen del Modelo LM (Coeficientes Robusto - HC3) MCO ===
   output$stock_robust_summary <- renderPrint({
     req(modelo_stock_cv())
     cat("Modelo LM MCO: Resumen con Errores Estándar Robustos (HC3)\n")
@@ -395,9 +414,6 @@ server <- function(input, output, session) {
     print(modelo_stock_cv()$robust_summary)
   })
   
-  # ==================== PESTAÑA 2: LM LOGARÍTMICO (NUEVO) ====================
-  
-  # === Métricas CV (Logarítmico) ===
   output$stock_log_metrics <- renderPrint({
     req(modelo_stock_cv())
     
@@ -422,22 +438,17 @@ server <- function(input, output, session) {
     print(df_res)
   })
   
-  # === Resumen del Modelo LM (Logarítmico final) ===
   output$stock_log_summary <- renderPrint({
     req(modelo_stock_cv())
     summary(modelo_stock_cv()$lm_log_final)
   })
   
-  # === Resumen del Modelo LM (Coeficientes Robusto - HC3) Logarítmico ===
   output$stock_log_robust_summary <- renderPrint({
     req(modelo_stock_cv())
     cat("Modelo LM Logarítmico: Resumen con Errores Estándar Robustos (HC3)\n\n")
     print(modelo_stock_cv()$robust_summary_log)
   })
   
-  # ==================== PESTAÑAS RESTANTES (MCO) ====================
-  
-  # === VIF y Durbin-Watson (MCO) ===
   output$stock_vif_dw <- renderPrint({
     req(modelo_stock_cv())
     
@@ -449,7 +460,6 @@ server <- function(input, output, session) {
     print(modelo_stock_cv()$dw_res)
   })
   
-  # === Coeficientes e IC 95% (MCO)
   output$stock_coefs <- renderPrint({
     req(modelo_stock_cv())
     
@@ -457,26 +467,18 @@ server <- function(input, output, session) {
     cat("Advertencia: Estos IC son ineficientes e incorrectos debido a la heterocedasticidad. \n")
     cat("Use el resumen Robusto (HC3) en la pestaña 'Resumen y Métricas'.\n\n")
     
-    # 1. Obtenemos el resumen tidy (con columna 'term')
     coefs_summary <- tidy(modelo_stock_cv()$lm_final)
-    
-    # 2. Obtenemos los ICs (ya preparados en modelo_stock_cv)
     ics_df <- modelo_stock_cv()$coefs_ic 
-    
-    # 3. Unimos por la columna 'term'
     coefs_summary <- left_join(coefs_summary, ics_df, by = "term")
-    
     print(coefs_summary)
   })
   
-  # === Matriz de Varianza-Covarianza (MCO) ===
   output$stock_vcov <- renderPrint({
     req(modelo_stock_cv())
     cat("=== Matriz de Varianza-Covarianza NO ROBUSTA (MCO) ===\n")
     print(modelo_stock_cv()$vcov_mat)
   })
   
-  # === ANOVA (MCO) ===
   output$stock_anova <- renderPrint({
     req(modelo_stock_cv())
     
@@ -485,14 +487,12 @@ server <- function(input, output, session) {
     print(modelo_stock_cv()$anova_res)
   })
   
-  # === Correlaciones Parciales (MCO) ===
   output$stock_pcor <- renderPrint({
     req(modelo_stock_cv())
     cat("=== Matriz de Correlación Parcial (Entre variables numéricas y dependiente MCO) ===\n")
     print(modelo_stock_cv()$pcor_mat)
   })
   
-  # === Gráfico Matriz de Correlación ===
   output$stock_cor_plot <- renderPlot({
     req(modelo_stock_cv())
     
@@ -514,7 +514,6 @@ server <- function(input, output, session) {
       ggtitle("Mapa de Calor de la Matriz de Correlación")
   })
   
-  # === Gráfico Predicción vs Real por Fold (MCO) ===
   output$plot_cv_stock <- renderPlot({
     req(modelo_stock_cv())
     df_preds_folds <- modelo_stock_cv()$modelo$pred
@@ -527,7 +526,6 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # === Gráfico Residuales vs Ajustados (MCO) ===
   output$plot_res_fit <- renderPlot({
     req(modelo_stock_cv())
     diag_data <- modelo_stock_cv()$diag_case
@@ -541,7 +539,6 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # === Gráfico Q-Q (Normalidad) (MCO) ===
   output$plot_qq <- renderPlot({
     req(modelo_stock_cv())
     diag_data <- modelo_stock_cv()$diag_case
@@ -554,7 +551,6 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # === Histograma de Residuales (MCO) ===
   output$plot_hist_res <- renderPlot({
     req(modelo_stock_cv())
     diag_data <- modelo_stock_cv()$diag_case
@@ -567,17 +563,13 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # === Gráficos Parciales (car::crPlots) (MCO) ===
   output$plot_cr <- renderPlot({
     req(modelo_stock_cv())
-    # Genera los gráficos de Componentes y Residuales para el modelo LM
     car::crPlots(modelo_stock_cv()$lm_final, ask = FALSE)
   })
   
-  # === Tabla de Influencia (Top 10 Cook's D) (MCO) ===
   output$stock_influence_table <- renderTable({
     req(modelo_stock_cv())
-    # .hat = Apalancamiento, .cooksd = Distancia de Cook
     modelo_stock_cv()$influence %>%
       rename(
         Ajustado = .fitted,
@@ -588,7 +580,6 @@ server <- function(input, output, session) {
       )
   })
   
-  # === Ejemplo de DfBetas (MCO) ===
   output$stock_dfbetas_example <- renderPrint({
     req(modelo_stock_cv())
     
@@ -598,16 +589,56 @@ server <- function(input, output, session) {
     cat("\nNota: DfBetas > 1 (o 2/sqrt(n)) indica un caso con alta influencia en ese coeficiente.")
   })
   
-  # === Descargar Diagnósticos por Caso (MCO) ===
   output$download_diagnostics_stock <- downloadHandler(
-    filename = function() { paste0('diagnostico_stock_', Sys.Date(), '.csv') },
+    filename = function() { paste0('predicciones_modelo_FINAL_consolidado_', Sys.Date(), '.csv') },
     content = function(file) {
       req(modelo_stock_cv())
-      write.csv(modelo_stock_cv()$diag_case, file, row.names = FALSE)
+      
+      data_full <- modelo_stock_cv()$dataset # Dataset completo
+      
+      # 1. Preparar las variables para la predicción
+      data_full$stock_ratio <- data_full$stock_inicio / pmax(1, data_full$pedidos_realizados)
+      data_full$pacientes_ratio <- data_full$pacientes / pmax(1, data_full$stock_inicio)
+      
+      # 2. Generar predicciones de ambos modelos
+      pred_mco <- predict(modelo_stock_cv()$modelo, newdata = data_full)
+      pred_log <- predict(modelo_stock_cv()$modelo_log, newdata = data_full)
+      
+      # 3. Calcular el Intervalo de Confianza (basado en RMSE de CV)
+      rmse_mean <- mean(modelo_stock_cv()$modelo$resample$RMSE)
+      t_val <- qt(0.975, df = nrow(data_full) - length(coef(modelo_stock_cv()$lm_final)))
+      margin_error <- t_val * rmse_mean
+      ic_bajo <- pmax(0, pred_mco - margin_error)
+      ic_alto <- pred_mco + margin_error
+      
+      # 4. Crear data frame de predicciones completas (sin redondear aún)
+      predicciones_completas <- data_full %>%
+        dplyr::select(producto, pedidos_necesarios) %>%
+        rename(Real = pedidos_necesarios) %>%
+        mutate(
+          Prediccion_MCO = pred_mco, 
+          Prediccion_Log = expm1(pred_log), 
+          IC_Bajo_95_MCO = ic_bajo,
+          IC_Alto_95_MCO = ic_alto
+        )
+      
+      # 5. **AGREGACIÓN FINAL**: Agrupar por 'producto' y calcular el promedio
+      export_data_agregada <- predicciones_completas %>%
+        group_by(producto) %>%
+        summarise(
+          Real_Promedio = round(mean(Real)),
+          Prediccion_MCO_Promedio = round(mean(Prediccion_MCO)),
+          Prediccion_Log_Promedio = round(mean(Prediccion_Log)),
+          IC_Bajo_95_Promedio = round(mean(IC_Bajo_95_MCO)),
+          IC_Alto_95_Promedio = round(mean(IC_Alto_95_MCO)),
+          .groups = 'drop' 
+        )
+      
+      # 6. Escribir el archivo CSV
+      write.csv(export_data_agregada, file, row.names = FALSE)
     }
   )
-  
-  # === Normalidad de los residuales (MCO) ===
+
   output$stock_normality_tests <- renderPrint({
     req(modelo_stock_cv())
     cat("=== Test de Normalidad de los Residuales ===\n\n")
@@ -619,7 +650,6 @@ server <- function(input, output, session) {
     cat("Esto puede indicar la presencia de valores atípicos o una mala especificación del modelo.\n")
   })
   
-  # === Comparación AIC/BIC (MCO vs Logarítmico) ===
   output$stock_aic_bic <- renderPrint({
     req(modelo_stock_cv())
     cat("=== Comparación de Modelos (AIC / BIC) ===\n")
@@ -631,7 +661,6 @@ server <- function(input, output, session) {
     cat("- Si el modelo logarítmico tiene AIC/BIC menores, suele ser preferible.\n")
   })
   
-  # === F-test de comparación entre modelos ===
   output$stock_f_test <- renderPrint({
     req(modelo_stock_cv())
     cat("=== F-test de Comparación entre Modelos (MCO vs Logarítmico) ===\n")
@@ -643,13 +672,9 @@ server <- function(input, output, session) {
   
   
   # ==================== MODELO DIAGNÓSTICO XGBOOST ====================
-  
-  # El código del Modelo Diagnóstico XGBoost permanece inalterado.
   modelo_diag <- eventReactive(input$entrenar_diag, {
     set.seed(123)
     n <- 3000
-    
-    # ==================== Generar dataset ====================
     pacientes <- data.frame(
       edad = sample(10:80, n, replace = TRUE),
       sexo = factor(sample(c("M", "F"), n, replace = TRUE)),
@@ -672,25 +697,21 @@ server <- function(input, output, session) {
                                               sum(is.na(diagnostico)), replace = TRUE)
     pacientes$diagnostico <- factor(diagnostico, levels = c("Limpieza","Endodoncia","Ortodoncia","Cirugia"))
     
-    # Features adicionales
     pacientes$edad_dolor <- pacientes$edad * pacientes$dolor
     pacientes$hacinamiento_sintoma <- pacientes$nivel_hacinamiento * as.numeric(pacientes$tipo_sintoma)
     pacientes$inflamacion_grave <- ifelse(pacientes$inflamacion_gums=="Severa",1,0)
     pacientes$quiste <- ifelse(pacientes$presencia_quiste=="Si",1,0)
     
-    # Balancear clases
     set.seed(123)
     pacientes_bal <- upSample(x = pacientes[, setdiff(names(pacientes), "diagnostico")],
                               y = pacientes$diagnostico)
     pacientes_bal$diagnostico <- pacientes_bal$Class
     pacientes_bal$Class <- NULL
     
-    # Train/Test
     trainIndex <- createDataPartition(pacientes_bal$diagnostico, p = 0.8, list = FALSE)
     trainData <- pacientes_bal[trainIndex, ]
     testData <- pacientes_bal[-trainIndex, ]
     
-    # Matriz sparse para XGBoost
     train_mat <- sparse.model.matrix(diagnostico ~ .-1, data = trainData)
     test_mat <- sparse.model.matrix(diagnostico ~ .-1, data = testData)
     label_train <- as.numeric(trainData$diagnostico) - 1
@@ -712,27 +733,24 @@ server <- function(input, output, session) {
     list(modelo = modelo, dtest = dtest, test_labels = label_test, testData = testData, levels = levels(pacientes$diagnostico))
   })
   
-  # === Gráfico de importancia XGBoost ===
   output$varImp_diag <- renderPlot({
     req(modelo_diag())
     importance <- xgb.importance(model = modelo_diag()$modelo)
     xgb.plot.importance(importance_matrix = importance, top_n = 10, rel_to_first = TRUE, main = "Importancia de Variables (Gain)")
   })
   
-  # === Matriz de confusión XGBoost (Texto) ===
   output$cm_diag_text <- renderPrint({
     req(modelo_diag())
     
     pred_prob <- predict(modelo_diag()$modelo, newdata = modelo_diag()$dtest)
     pred_matrix <- matrix(pred_prob, ncol = length(modelo_diag()$levels), byrow = TRUE)
-    pred_labels <- max.col(pred_matrix) - 1 # 0-indexed
+    pred_labels <- max.col(pred_matrix) - 1
     
     cm <- caret::confusionMatrix(factor(pred_labels, levels=0:3, labels=modelo_diag()$levels),
                                  modelo_diag()$testData$diagnostico)
     print(cm)
   })
   
-  # === Matriz de confusión XGBoost (Gráfico) ===
   output$cm_diag_plot <- renderPlot({
     req(modelo_diag())
     
@@ -754,7 +772,6 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # === Descargar Predicciones (XGBoost) ===
   output$download_diag_predictions <- downloadHandler(
     filename = function() { paste0('predicciones_diag_test_', Sys.Date(), '.csv') },
     content = function(file) {
@@ -768,7 +785,6 @@ server <- function(input, output, session) {
       export_data <- modelo_diag()$testData
       export_data$Prediccion_XGBoost <- pred_class
       
-      # Añadir probabilidades de clase
       colnames(pred_matrix) <- paste0("Prob_", modelo_diag()$levels)
       export_data <- cbind(export_data, pred_matrix)
       
@@ -776,7 +792,6 @@ server <- function(input, output, session) {
     }
   )
 }
-
 
 # ==================== RUN APP ====================
 shinyApp(ui = ui, server = server)
