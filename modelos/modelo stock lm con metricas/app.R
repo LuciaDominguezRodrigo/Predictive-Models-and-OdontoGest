@@ -94,28 +94,6 @@ ui <- fluidPage(
                  )
                )
              )
-    ),
-    
-    tabPanel("Modelo Diagnóstico",
-             sidebarLayout(
-               sidebarPanel(
-                 actionButton("entrenar_diag", "Entrenar Modelo Diagnóstico (XGBoost)"),
-                 tags$hr(),
-                 h4("Exportar Predicciones Test"),
-                 downloadButton("download_diag_predictions", "Descargar Predicciones (CSV)")
-               ),
-               mainPanel(
-                 tabsetPanel(
-                   tabPanel("Importancia Variables", plotOutput("varImp_diag", height = "500px", width = "100%")),
-                   tabPanel("Matriz de Confusión", 
-                            h3("Métricas y Matriz de Confusión (Texto)"),
-                            verbatimTextOutput("cm_diag_text"), 
-                            tags$hr(),
-                            h3("Matriz de Confusión (Gráfico)"),
-                            plotOutput("cm_diag_plot", height = "500px", width = "100%"))
-                 )
-               )
-             )
     )
   )
 )
