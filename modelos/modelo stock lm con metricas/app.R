@@ -290,15 +290,10 @@ server <- function(input, output, session) {
     )
   })
   
-  # === Tabla de datos de entrada para la predicción (Eliminado, no necesario) ===
-  # output$next_month_data_input <- renderTable({...})
+  
   
   # === Predicción del pedido del mes siguiente (Incluye Logarítmico) ===
-  # CAMBIO #1: Ahora predice para todo el dataset, no solo para 4 ejemplos
-  # =========================================================================
-  # === Predicción del pedido del mes siguiente (Tabla Consolidada) ===
-  # CAMBIO #1: Modificación para calcular y mostrar el promedio por producto
-  # =========================================================================
+  
   output$pedido_mes_siguiente <- renderTable({
     req(modelo_stock_cv())
     
@@ -376,7 +371,7 @@ server <- function(input, output, session) {
   )
   
   
-
+  
   output$stock_metrics <- renderPrint({
     req(modelo_stock_cv())
     
@@ -638,7 +633,7 @@ server <- function(input, output, session) {
       write.csv(export_data_agregada, file, row.names = FALSE)
     }
   )
-
+  
   output$stock_normality_tests <- renderPrint({
     req(modelo_stock_cv())
     cat("=== Test de Normalidad de los Residuales ===\n\n")
@@ -670,127 +665,6 @@ server <- function(input, output, session) {
     cat("- Si el p-valor < 0.05, el modelo logarítmico aporta información adicional relevante.\n")
   })
   
-  
-  # ==================== MODELO DIAGNÓSTICO XGBOOST ====================
-  modelo_diag <- eventReactive(input$entrenar_diag, {
-    set.seed(123)
-    n <- 3000
-    pacientes <- data.frame(
-      edad = sample(10:80, n, replace = TRUE),
-      sexo = factor(sample(c("M", "F"), n, replace = TRUE)),
-      dolor = runif(n, 0, 10),
-      inflamacion_gums = factor(sample(c("No", "Si", "Severa"), n, replace = TRUE, prob = c(0.5, 0.4, 0.1))),
-      historial_caries = factor(sample(c("No", "Si"), n, replace = TRUE, prob = c(0.4, 0.6))),
-      numero_dientes = sample(20:32, n, replace = TRUE),
-      tipo_sintoma = factor(sample(c("dolor sordo", "dolor agudo", "sensibilidad", "fractura"), n, replace = TRUE)),
-      nivel_hacinamiento = runif(n, 0, 5),
-      presencia_quiste = factor(sample(c("No","Si"), n, replace = TRUE, prob = c(0.95,0.05))),
-      historial_tratamiento = factor(sample(c("Ninguno","Empastes","Endodoncia_previa"), n, replace = TRUE, prob = c(0.6,0.3,0.1)))
-    )
-    
-    diagnostico <- rep(NA, n)
-    diagnostico[pacientes$dolor < 3 & pacientes$inflamacion_gums == "No" & pacientes$historial_caries == "No"] <- "Limpieza"
-    diagnostico[pacientes$dolor >= 7 & pacientes$historial_caries == "Si" & pacientes$tipo_sintoma == "dolor agudo"] <- "Endodoncia"
-    diagnostico[pacientes$edad < 25 & pacientes$nivel_hacinamiento >= 3] <- "Ortodoncia"
-    diagnostico[pacientes$presencia_quiste == "Si" | pacientes$tipo_sintoma == "fractura" | pacientes$dolor > 8 | pacientes$inflamacion_gums == "Severa"] <- "Cirugia"
-    diagnostico[is.na(diagnostico)] <- sample(c("Limpieza","Endodoncia","Ortodoncia","Cirugia"),
-                                              sum(is.na(diagnostico)), replace = TRUE)
-    pacientes$diagnostico <- factor(diagnostico, levels = c("Limpieza","Endodoncia","Ortodoncia","Cirugia"))
-    
-    pacientes$edad_dolor <- pacientes$edad * pacientes$dolor
-    pacientes$hacinamiento_sintoma <- pacientes$nivel_hacinamiento * as.numeric(pacientes$tipo_sintoma)
-    pacientes$inflamacion_grave <- ifelse(pacientes$inflamacion_gums=="Severa",1,0)
-    pacientes$quiste <- ifelse(pacientes$presencia_quiste=="Si",1,0)
-    
-    set.seed(123)
-    pacientes_bal <- upSample(x = pacientes[, setdiff(names(pacientes), "diagnostico")],
-                              y = pacientes$diagnostico)
-    pacientes_bal$diagnostico <- pacientes_bal$Class
-    pacientes_bal$Class <- NULL
-    
-    trainIndex <- createDataPartition(pacientes_bal$diagnostico, p = 0.8, list = FALSE)
-    trainData <- pacientes_bal[trainIndex, ]
-    testData <- pacientes_bal[-trainIndex, ]
-    
-    train_mat <- sparse.model.matrix(diagnostico ~ .-1, data = trainData)
-    test_mat <- sparse.model.matrix(diagnostico ~ .-1, data = testData)
-    label_train <- as.numeric(trainData$diagnostico) - 1
-    label_test <- as.numeric(testData$diagnostico) - 1
-    
-    dtrain <- xgb.DMatrix(data = train_mat, label = label_train)
-    dtest <- xgb.DMatrix(data = test_mat, label = label_test)
-    
-    params <- list(
-      objective = "multi:softprob",
-      num_class = length(levels(pacientes$diagnostico)),
-      eval_metric = "mlogloss",
-      eta = 0.05,
-      max_depth = 6
-    )
-    
-    modelo <- xgb.train(params = params, data = dtrain, nrounds = 200, watchlist = list(train=dtrain), verbose=0)
-    
-    list(modelo = modelo, dtest = dtest, test_labels = label_test, testData = testData, levels = levels(pacientes$diagnostico))
-  })
-  
-  output$varImp_diag <- renderPlot({
-    req(modelo_diag())
-    importance <- xgb.importance(model = modelo_diag()$modelo)
-    xgb.plot.importance(importance_matrix = importance, top_n = 10, rel_to_first = TRUE, main = "Importancia de Variables (Gain)")
-  })
-  
-  output$cm_diag_text <- renderPrint({
-    req(modelo_diag())
-    
-    pred_prob <- predict(modelo_diag()$modelo, newdata = modelo_diag()$dtest)
-    pred_matrix <- matrix(pred_prob, ncol = length(modelo_diag()$levels), byrow = TRUE)
-    pred_labels <- max.col(pred_matrix) - 1
-    
-    cm <- caret::confusionMatrix(factor(pred_labels, levels=0:3, labels=modelo_diag()$levels),
-                                 modelo_diag()$testData$diagnostico)
-    print(cm)
-  })
-  
-  output$cm_diag_plot <- renderPlot({
-    req(modelo_diag())
-    
-    pred_prob <- predict(modelo_diag()$modelo, newdata = modelo_diag()$dtest)
-    pred_matrix <- matrix(pred_prob, ncol = length(modelo_diag()$levels), byrow = TRUE)
-    pred_labels <- max.col(pred_matrix) - 1
-    
-    cm <- caret::confusionMatrix(factor(pred_labels, levels=0:3, labels=modelo_diag()$levels),
-                                 modelo_diag()$testData$diagnostico)
-    
-    cm_melt <- melt(cm$table)
-    
-    ggplot(cm_melt, aes(Reference, Prediction, fill=value)) +
-      geom_tile() +
-      geom_text(aes(label=value), color="white", size=5) +
-      scale_fill_gradient(low="lightblue", high="darkred") +
-      labs(title = "Matriz de Confusión - Diagnóstico (XGBoost)", 
-           x = "Real", y = "Predicción", fill = "Conteo") +
-      theme_minimal()
-  })
-  
-  output$download_diag_predictions <- downloadHandler(
-    filename = function() { paste0('predicciones_diag_test_', Sys.Date(), '.csv') },
-    content = function(file) {
-      req(modelo_diag())
-      
-      pred_prob <- predict(modelo_diag()$modelo, newdata = modelo_diag()$dtest)
-      pred_matrix <- matrix(pred_prob, ncol = length(modelo_diag()$levels), byrow = TRUE)
-      pred_labels <- max.col(pred_matrix) - 1
-      pred_class <- factor(pred_labels, levels=0:3, labels=modelo_diag()$levels)
-      
-      export_data <- modelo_diag()$testData
-      export_data$Prediccion_XGBoost <- pred_class
-      
-      colnames(pred_matrix) <- paste0("Prob_", modelo_diag()$levels)
-      export_data <- cbind(export_data, pred_matrix)
-      
-      write.csv(export_data, file, row.names = FALSE)
-    }
-  )
 }
 
 # ==================== RUN APP ====================
