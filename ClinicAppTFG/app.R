@@ -1,53 +1,103 @@
+# ==============================================================================
+# PROYECTO: ClinicAppTFG
+# MÓDULO: app.R
+# 
+# ==============================================================================
 library(shiny)
+library(DBI)
+library(pool)
+library(bcrypt)
 
-# Cargar configuración global y base de datos
-source("global.R")
-source("db_init.R")
+# -----------------------------
+#  Configuración global y base de datos
+# -----------------------------
+source("global.R")    
+source("db_init.R")    # Crea tablas y datos iniciales
 
-# Cargar módulos
+# -----------------------------
+#  Módulos
+# -----------------------------
 source("modules/login/login_ui.R")
 source("modules/login/login_server.R")
+
 source("modules/index/main_ui_module.R")
 
-# UI principal
+source("modules/reset_password/reset_password_ui.R")
+source("modules/reset_password/reset_password_server.R")
+
+source("modules/reset_password/reset_confirm_ui.R")
+source("modules/reset_password/reset_confirm_server.R")
+
+# -----------------------------
+#  UI principal
+# -----------------------------
 ui <- fluidPage(
-  # CSS general
   tags$head(
-   
-    # CSS específico del login
     tags$link(rel="stylesheet", type="text/css", href="login_style.css")
   ),
-  
-  # Salidas dinámicas para login y dashboard
   uiOutput("ui_login"),
+  uiOutput("ui_reset"),
+  uiOutput("ui_reset_confirm"),
   uiOutput("ui_main")
 )
 
-# Server
+# -----------------------------
+#  Server
+# -----------------------------
 server <- function(input, output, session){
   
-  user_logged <- reactiveVal(FALSE)
+  # Variables reactivas
+  user_logged  <- reactiveVal(FALSE)
   current_user <- reactiveVal(NULL)
   
-  # Renderizar login si no está logueado
+  # FALSE = login, TRUE = reset, "CONFIRM" = confirmación token
+  show_view <- reactiveVal(FALSE)
+  
+  # -------- Detectar token en URL --------
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    
+    if (!is.null(query[['token']]) && query[['page']] == "reset_confirm") {
+      # ⬇️ AÑADE ESTO: Asegura que el usuario no esté logueado al intentar resetear
+      user_logged(FALSE)
+      current_user(NULL)
+      
+      show_view("CONFIRM")
+    }
+  })
+  
+  # -------- UI dinámico --------
   output$ui_login <- renderUI({
-    if(!user_logged()) loginUI("login")
+    if (!user_logged() && identical(show_view(), FALSE))
+      loginUI("login")
   })
   
-  # Renderizar dashboard si está logueado
+  output$ui_reset <- renderUI({
+    if (identical(show_view(), TRUE))
+      resetPasswordUI("resetpass")
+  })
+  
+  output$ui_reset_confirm <- renderUI({
+    if (identical(show_view(), "CONFIRM"))
+      resetConfirmUI("resetconfirm")
+  })
+  
   output$ui_main <- renderUI({
-    if(user_logged()) mainUI("main")
+    if (user_logged())
+      mainUI("main")
   })
   
-  # Lógica del login
-  loginServer("login", pool, user_logged, current_user)
-  
-  # Lógica del dashboard / main UI
+  # -------- Servidores --------
+  loginServer("login", pool, user_logged, current_user, show_view)
   mainServer("main", current_user, user_logged)
+  resetPasswordServer("resetpass", pool, show_view)
+  resetConfirmServer("resetconfirm", pool, show_view)
   
-  # Cerrar pool al salir
-  session$onSessionEnded(function() { poolClose(pool) })
+  # Cerrar pool al finalizar sesión
+  session$onSessionEnded(function(){ poolClose(pool) })
 }
 
-# Ejecutar app
-shinyApp(ui, server)
+# -----------------------------
+#  Ejecutar la app
+# -----------------------------
+shinyApp(ui, server, options = list(port = 3841))

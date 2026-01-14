@@ -13,7 +13,11 @@ loginUI <- function(id) {
         textInput(ns("usuario"), "Usuario"),
         passwordInput(ns("contraseña"), "Contraseña"),
         actionButton(ns("btn_login"), "Ingresar"),
-        div(class="login-msg", verbatimTextOutput(ns("login_msg")))
+        div(class="login-msg", verbatimTextOutput(ns("login_msg"))),
+        
+        # AÑADIR ENLACE DE RECUPERACIÓN DE CONTRASEÑA
+        br(),
+        actionLink(ns("forgot_password"), "Olvidé mi contraseña") 
     )
   )
 }
