@@ -1,4 +1,9 @@
-# tests/test_login.R
+# ==============================================================================
+# PROYECTO: ClinicAppTFG
+# MÓDULO: Testing Unitario - Login
+# DESCRIPCIÓN: Pruebas automatizadas para validar la lógica de negocio sin
+#              dependencias de base de datos o servidores de correo reales.
+# ==============================================================================
 
 library(testthat)
 library(bcrypt)

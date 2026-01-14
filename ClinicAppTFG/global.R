@@ -5,6 +5,8 @@ library(RMariaDB)
 library(dotenv)
 library(pool)
 library(digest)
+library(mailR)
+library(sodium)
 
 # Cargar variables de entorno
 load_dot_env(".env")
