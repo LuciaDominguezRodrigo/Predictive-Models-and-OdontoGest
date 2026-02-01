@@ -80,7 +80,22 @@ input[type="text"], input[type="password"] {
     gap: 8px;
     animation: fadeIn 0.5s ease-in-out;
 }
-
+.shiny-input-container {
+      width: 100% !important;
+    }
+    .shiny-input-container input {
+      width: 100% !important;
+      font-size: 1.125rem !important; /* text-lg */
+      padding: 1rem 1.25rem !important;
+      border-radius: 0.75rem !important;
+      border: 1px solid #e5e7eb !important;
+      background-color: #f9fafb !important;
+    }
+    .shiny-input-container input:focus {
+      border-color: #7e3af2 !important; /* clinicPurple */
+      box-shadow: 0 0 0 4px rgba(126, 58, 242, 0.1) !important;
+      background-color: white !important;
+    }
 /* Animación para que aparezca suavemente */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }

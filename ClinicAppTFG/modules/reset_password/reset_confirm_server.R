@@ -44,13 +44,33 @@ resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
       u <- user_to_reset()
       if (is.data.frame(u)) {
         tagList(
-          passwordInput(ns("new_pass1"), "Nueva Contraseña"),
-          passwordInput(ns("new_pass2"), "Confirmar"),
-          actionButton(ns("btn_set_pass"), "Guardar"),
-          textOutput(ns("pass_msg"))
+          # Nueva Contraseña
+          div(
+            class = "mb-2",
+            tags$label("Nueva Contraseña", class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-2 ml-1"),
+            passwordInput(ns("new_pass1"), label = NULL, placeholder = "••••••••")
+          ),
+          
+          # Confirmar
+          div(
+            class = "mb-6",
+            tags$label("Confirmar Contraseña", class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-2 ml-1"),
+            passwordInput(ns("new_pass2"), label = NULL, placeholder = "••••••••")
+          ),
+          
+          # Botón Estilizado
+          actionButton(
+            ns("btn_set_pass"), 
+            "Guardar Nueva Contraseña",
+            class = "w-full py-5 rounded-xl text-white text-xl font-bold tracking-wide bg-clinicPurple hover:bg-purple-700 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-purple-200"
+          ),
+          
+          # Mensaje de error/éxito
+          div(class = "mt-4 text-center text-lg", textOutput(ns("pass_msg")))
         )
       } else {
-        span("Enlace no válido o cargando...")
+        div(class="p-6 bg-red-50 text-red-600 rounded-2xl text-center text-lg font-medium", 
+            "⚠️ El enlace no es válido o ha expirado.")
       }
     })
     
