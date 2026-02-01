@@ -73,8 +73,7 @@ resetPasswordServer <- function(id, pool, show_view) {
         dbGetQuery(pool,
                    "SELECT id, email, nombre 
               FROM usuarios 
-              WHERE LOWER(TRIM(usuario)) = LOWER(TRIM(?)) 
-              OR LOWER(TRIM(email)) = LOWER(TRIM(?))",
+              WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)",
                    params = list(usuario_input, usuario_input))
       }, error = function(e) {
         print(paste("Error en DB:", e$message)) 
@@ -122,10 +121,7 @@ resetPasswordServer <- function(id, pool, show_view) {
           
           if (envio_exitoso) {
             output$reset_msg <- renderText({
-              div(class = "alert-success-custom",
-                  icon("check-circle"), # Requiere font-awesome (viene con Shiny)
-                  "Si el usuario existe, recibirás un correo en breve."
-              )
+              paste0("✅ Se ha enviado un correo de recuperación a ", user_info$email, ". Revisa tu bandeja de entrada.")
             })
           } else {
             output$reset_msg <- renderText("⚠️ Error al enviar el correo. Contacta al soporte técnico.")
@@ -137,13 +133,7 @@ resetPasswordServer <- function(id, pool, show_view) {
         
       } else {
         # Mensaje genérico para evitar revelar si el usuario existe o no
-        output$reset_msg <- renderUI({
-          div(class = "alert-success-custom",
-              icon("check-circle"),
-              "Si el usuario existe, recibirás un correo en breve."
-          )
-        })
-        
+        output$reset_msg <- renderText("✅ Si el usuario existe, recibirás un correo de recuperación en breve.") 
       }
     })
     

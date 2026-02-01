@@ -1,50 +1,98 @@
+/* Centrar todo en la pantalla */
 body {
     background-color: #f4f7f9;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
 }
 
-.login-box {
-    width: 350px;
-    margin: 100px auto;
+/* Caja unificada para Login, Reset y Confirm */
+.login-box, .reset-box, .confirm-box {
+    width: 380px;
     padding: 40px;
     background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: center; /* Centra el contenido */
 }
 
-.login-box h2 {
-    text-align: center;
+.login-box h2, .reset-box h2, .confirm-box h2 {
+    color: #6a0dad;
     margin-bottom: 30px;
-    color: #6a0dad; /* morado pastel */
+    font-weight: 600;
 }
 
-.login-box input[type="text"],
-.login-box input[type="password"] {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0 20px 0;
-    border: 1px solid #d1c4e9;
-    border-radius: 5px;
+/* Estilo de los Inputs para que no se vean 'planos' */
+.login-box .form-group, .reset-box .form-group, .confirm-box .form-group {
+    text-align: left; /* Etiquetas a la izquierda */
 }
 
-.login-box button {
+input[type="text"], input[type="password"] {
+    width: 100% !important;
+    height: 45px;
+    border: 1px solid #d1c4e9 !important;
+    border-radius: 8px !important;
+}
+
+/* BOTÓN: Forzamos el estilo morado */
+.btn-login-custom {
     width: 100%;
-    padding: 12px;
-    background-color: #8e44ad;
-    border: none;
-    border-radius: 5px;
-    color: white;
+    height: 45px;
+    background-color: #8e44ad !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
     font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.login-box button:hover {
-    background-color: #6a0dad;
-    cursor: pointer;
-}
-
-.login-msg {
-    color: #d32f2f;
-    text-align: center;
+    font-weight: bold;
     margin-top: 10px;
+    transition: background 0.3s ease;
+}
+
+.btn-login-custom:hover {
+    background-color: #6a0dad !important;
+}
+
+/* Enlaces */
+.shiny-action-link {
+    color: #8e44ad;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.shiny-action-link:hover {
+    text-decoration: underline;
+}
+
+/* Contenedor de mensajes de éxito (Verde moderno) */
+.alert-success-custom {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 20px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Animación para que aparezca suavemente */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Para mensajes de error (Rojo moderno) */
+.alert-error-custom {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 20px;
 }
