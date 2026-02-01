@@ -1,17 +1,35 @@
 resetConfirmUI <- function(id) {
   ns <- NS(id)
   tagList(
-    div(class="confirm-box",
-        h2("Nueva Contraseña"),
-        # Solo dejamos esto. El Server se encargará de rellenarlo.
-        uiOutput(ns("form_reset")),
+    div(
+      class = "w-screen h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100",
+      
+      div(
+        class = "bg-white w-[450px] p-12 rounded-3xl shadow-2xl border border-gray-100/50",
         
-        # Este es el contenedor para el cuadradito verde/rojo de aviso
-        uiOutput(ns("confirm_msg_ui")),
+        # Título y subtítulo
+        div(
+          class = "text-center mb-10",
+          h2(class = "text-4xl font-bold text-clinicPurple tracking-tight", "Nueva Contraseña"),
+          p(class = "text-gray-500 text-lg mt-3", "Define tu nueva clave de acceso")
+        ),
         
-        div(style="text-align: center;",
-            actionLink(ns("go_login"), "Volver al inicio de sesión")
+        # El contenedor del formulario
+        div(
+          class = "flex flex-col space-y-6", 
+          uiOutput(ns("form_reset"))
+        ),
+        
+        # Enlace para volver abajo
+        div(
+          class = "mt-10 text-center",
+          actionLink(
+            ns("go_login"), 
+            label = "Cancelar y volver",
+            class = "text-lg text-gray-400 hover:text-red-500 transition-colors font-medium"
+          )
         )
+      )
     )
   )
 }
