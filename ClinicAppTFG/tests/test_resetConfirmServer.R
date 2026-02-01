@@ -1,3 +1,10 @@
+# ==============================================================================
+# PROYECTO: ClinicAppTFG
+# MÓDULO: Testing Unitario - Recuperación de Contraseña II
+# DESCRIPCIÓN: Pruebas automatizadas para validar la lógica de negocio sin
+#              dependencias de base de datos o servidores de correo reales.
+# ==============================================================================
+
 library(testthat)
 library(shiny)
 library(RSQLite)
@@ -41,6 +48,6 @@ test_that("Modulo Reset Password funciona", {
     session$setInputs(btn_set_pass = 2)
     session$flushReact()
     
-    expect_equal(res_modulo$msg(), "✅ Éxito")
+    expect_equal(res_modulo$msg(), "✅ Contraseña actualizada correctamente")
   })
 })

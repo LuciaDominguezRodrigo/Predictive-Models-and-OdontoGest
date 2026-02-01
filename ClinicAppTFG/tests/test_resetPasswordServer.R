@@ -1,6 +1,6 @@
 # ==============================================================================
 # PROYECTO: ClinicAppTFG
-# MÓDULO: Testing Unitario - Recuperación de Contraseña
+# MÓDULO: Testing Unitario - Recuperación de Contraseña I
 # DESCRIPCIÓN: Pruebas automatizadas para validar la lógica de negocio sin
 #              dependencias de base de datos o servidores de correo reales.
 # ==============================================================================

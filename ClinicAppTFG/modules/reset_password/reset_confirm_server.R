@@ -1,6 +1,7 @@
 library(shiny)
 library(DBI)
 library(bcrypt)
+library(shinyjs)
 
 resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
   moduleServer(id, function(input, output, session) {
@@ -10,14 +11,14 @@ resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
     user_to_reset <- reactiveVal(NULL)
     feedback_msg  <- reactiveVal("") 
     
-    # Lógica del Token: Prioriza el manual (test) sobre el de la URL
+    # Token manual para tests
     current_token <- reactive({
       if (!is.null(token_manual)) return(token_manual)
       query <- parseQueryString(session$clientData$url_search)
       query[["token"]]
     })
     
-    # Validación
+    # Validación del token
     observeEvent(current_token(), {
       token <- current_token()
       req(token)
@@ -25,7 +26,7 @@ resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
       res <- tryCatch({
         dbGetQuery(pool, 
                    "SELECT id AS id_usuario, usuario, reset_token, token_expiry 
-           FROM usuarios WHERE reset_token = ?", 
+                    FROM usuarios WHERE reset_token = ?", 
                    params = list(token))
       }, error = function(e) NULL)
       
@@ -56,20 +57,27 @@ resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
     # Guardar contraseña
     observeEvent(input$btn_set_pass, {
       req(input$new_pass1, input$new_pass2)
+      
       if (input$new_pass1 != input$new_pass2) {
         feedback_msg("❌ No coinciden")
         return()
       }
       
       hashed <- bcrypt::hashpw(input$new_pass1, bcrypt::gensalt())
-      dbExecute(pool, "UPDATE usuarios SET password_hash = ?, reset_token = NULL WHERE id = ?",
-                params = list(hashed, user_to_reset()$id_usuario))
+      dbExecute(pool,
+                "UPDATE usuarios SET password_hash = ?, reset_token = NULL WHERE id = ?",
+                params = list(hashed, user_to_reset()$id_usuario)
+      )
       
-      feedback_msg("✅ Éxito")
-      if(is.function(show_view)) show_view(FALSE)
+      feedback_msg("✅ Contraseña actualizada correctamente")
+      
+      # Volver a login tras 1.5s
+      shinyjs::delay(1500, {
+        show_view(FALSE)
+      })
     })
     
-    # Exportar para test (IMPORTANTE)
+    # Exportar para tests
     return(list(user = user_to_reset, msg = feedback_msg))
   })
 }
