@@ -1,40 +1,53 @@
 # ==============================================================================
 # PROYECTO: ClinicAppTFG
 # MÓDULO: app.R
-# 
 # ==============================================================================
 library(shiny)
 library(DBI)
 library(pool)
 library(bcrypt)
+library(shinyjs)
 
 # -----------------------------
-#  Configuración global y base de datos
+# Configuración global y base de datos
 # -----------------------------
-source("global.R")    
+source("global.R")
 source("db_init.R")    # Crea tablas y datos iniciales
 
 # -----------------------------
-#  Módulos
+# Módulos
 # -----------------------------
 source("modules/login/login_ui.R")
 source("modules/login/login_server.R")
-
 source("modules/index/main_ui_module.R")
-
 source("modules/reset_password/reset_password_ui.R")
 source("modules/reset_password/reset_password_server.R")
-
 source("modules/reset_password/reset_confirm_ui.R")
 source("modules/reset_password/reset_confirm_server.R")
 
 # -----------------------------
-#  UI principal
+# UI principal
 # -----------------------------
 ui <- fluidPage(
-  tags$head(
-    tags$link(rel="stylesheet", type="text/css", href="login_style.css")
-  ),
+  useShinyjs(),
+  tags$head(tags$link(rel="stylesheet", type="text/css", href="login_style.css")),
+  
+  tags$script(src="https://cdn.tailwindcss.com"),
+  
+  # === CONFIG TAILWIND COLORES PERSONALIZADOS ===
+  tags$script(HTML("
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              clinicBlue: '#2563eb',
+              clinicPurple: '#6a0dad'
+            }
+          }
+        }
+      }
+    ")),
+  
   uiOutput("ui_login"),
   uiOutput("ui_reset"),
   uiOutput("ui_reset_confirm"),
@@ -42,62 +55,71 @@ ui <- fluidPage(
 )
 
 # -----------------------------
-#  Server
+# Server
 # -----------------------------
-server <- function(input, output, session){
+server <- function(input, output, session) {
   
   # Variables reactivas
   user_logged  <- reactiveVal(FALSE)
   current_user <- reactiveVal(NULL)
+  show_view    <- reactiveVal(FALSE)  # FALSE = login, TRUE = reset, "CONFIRM" = confirmación token
   
-  # FALSE = login, TRUE = reset, "CONFIRM" = confirmación token
-  show_view <- reactiveVal(FALSE)
-  
-  # -------- Detectar token en URL --------
-  observe({
+  # -----------------------------
+  # Detectar token en URL al iniciar
+  # -----------------------------
+  isolate({
     query <- parseQueryString(session$clientData$url_search)
+    token <- query[['token']]
+    page  <- query[['page']]
     
-    if (!is.null(query[['token']]) && query[['page']] == "reset_confirm") {
-      # ⬇️ AÑADE ESTO: Asegura que el usuario no esté logueado al intentar resetear
+    if (!is.null(token) && page == "reset_confirm") {
       user_logged(FALSE)
       current_user(NULL)
+      show_view("CONFIRM")   # mostramos vista de reset
       
-      show_view("CONFIRM")
+      # Limpiar URL después de renderizar la vista
+      shinyjs::delay(100, {
+        runjs("history.replaceState({}, '', window.location.pathname);")
+      })
     }
   })
   
-  # -------- UI dinámico --------
+  # -----------------------------
+  # UI dinámico
+  # -----------------------------
   output$ui_login <- renderUI({
-    if (!user_logged() && identical(show_view(), FALSE))
-      loginUI("login")
+    if (!user_logged() && identical(show_view(), FALSE)) loginUI("login")
   })
   
   output$ui_reset <- renderUI({
-    if (identical(show_view(), TRUE))
-      resetPasswordUI("resetpass")
+    if (identical(show_view(), TRUE)) resetPasswordUI("resetpass")
   })
   
   output$ui_reset_confirm <- renderUI({
-    if (identical(show_view(), "CONFIRM"))
-      resetConfirmUI("resetconfirm")
+    if (identical(show_view(), "CONFIRM")) resetConfirmUI("resetconfirm")
   })
   
   output$ui_main <- renderUI({
-    if (user_logged())
-      mainUI("main")
+    if (user_logged()) mainUI("main")
   })
   
-  # -------- Servidores --------
+  # -----------------------------
+  # Servidores
+  # -----------------------------
   loginServer("login", pool, user_logged, current_user, show_view)
   mainServer("main", current_user, user_logged)
   resetPasswordServer("resetpass", pool, show_view)
   resetConfirmServer("resetconfirm", pool, show_view)
   
+  # -----------------------------
   # Cerrar pool al finalizar sesión
-  session$onSessionEnded(function(){ poolClose(pool) })
+  # -----------------------------
+  session$onSessionEnded(function() {
+    poolClose(pool)
+  })
 }
 
 # -----------------------------
-#  Ejecutar la app
+# Ejecutar la app
 # -----------------------------
 shinyApp(ui, server, options = list(port = 3841))

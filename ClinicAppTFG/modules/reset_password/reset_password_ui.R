@@ -1,26 +1,18 @@
-# --- modules/reset_password/resetPasswordUI.R ---
-
 resetPasswordUI <- function(id) {
-  # Crear un namespace para aislar los IDs de este módulo
   ns <- NS(id)
-  
   tagList(
     div(class="reset-box",
-        h2("Recuperar Contraseña (Paso 1/2)"),
-        p("Introduce tu **nombre de usuario** o el **correo electrónico** asociado a tu cuenta para recibir el enlace de restablecimiento."),
+        h2("Recuperar Contraseña"),
+        p("Introduce tu correo electrónico para recibir el enlace de restablecimiento."),
         
-        # Campo de entrada, etiqueta adaptada para aceptar usuario O correo
         textInput(ns("usuario_reset"), "Usuario o Correo Electrónico"),
         
-        # Botón para iniciar el proceso
-        actionButton(ns("btn_reset"), "Enviar correo de recuperación", class = "btn-primary"),
+        actionButton(ns("btn_reset"), "Enviar correo", class = "btn-login-custom"),
         
-        # Mensaje de retroalimentación (éxito o error)
-        verbatimTextOutput(ns("reset_msg")),
+        # CAMBIO AQUÍ: Usamos uiOutput en lugar de verbatim
+        uiOutput(ns("reset_msg_ui")),
         
         br(),
-        
-        # Enlace para volver a la pantalla de login
         actionLink(ns("back_login"), "Volver al login")
     )
   )
