@@ -28,7 +28,7 @@ enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_r
     "<h2>¡Hola, ", nombre_usuario, "!</h2>",
     "<p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en ClinicAppTFG.</p>",
     "<p>Haz clic en el siguiente botón. Este enlace caducará en 30 minutos.</p>",
-    "<a href='", enlace_restablecimiento, "' style='background-color: #007bff; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>",
+    "<a href='", enlace_restablecimiento, "' style='background-color: #6a0dad; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>",
     "Restablecer Contraseña</a>",
     "<p style='margin-top: 20px;'>Si no solicitaste este cambio, ignora este correo.</p>",
     "</body></html>"
@@ -38,7 +38,7 @@ enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_r
     send.mail(
       from = MI_CORREO,
       to = destinatario,
-      subject = "⚠️ Solicitud de Restablecimiento de Contraseña para ClinicAppTFG",
+      subject = "Solicitud de Restablecimiento de Contraseña para ClinicAppTFG",
       html = TRUE, 
       body = cuerpo_html,
       smtp = list(
