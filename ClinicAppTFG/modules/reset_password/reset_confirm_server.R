@@ -3,7 +3,7 @@ library(DBI)
 library(bcrypt)
 library(shinyjs)
 
-resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
+resetConfirmServer <- function(id, pool, show_view, update_url, token_manual = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -94,6 +94,7 @@ resetConfirmServer <- function(id, pool, show_view, token_manual = NULL) {
       # Volver a login tras 1.5s
       shinyjs::delay(1500, {
         show_view(FALSE)
+        update_url("login")
       })
     })
     
