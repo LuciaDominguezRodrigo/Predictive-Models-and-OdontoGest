@@ -1,12 +1,13 @@
 # ==============================================================================
 # PROYECTO: ClinicAppTFG
-# MÓDULO: app.R
+# MÓDULO: app.R (Versión Final Corregida)
 # ==============================================================================
 library(shiny)
 library(DBI)
 library(pool)
 library(bcrypt)
 library(shinyjs)
+library(jsonlite)
 
 # -----------------------------
 # Configuración global y base de datos
@@ -46,18 +47,12 @@ ui <- fluidPage(
     # Config Tailwind
     tags$script(HTML("
       tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              clinicBlue: '#2563eb',
-              clinicPurple: '#6a0dad'
-            }
-          }
-        }
+        theme: { extend: { colors: { clinicBlue: '#2563eb', clinicPurple: '#6a0dad' } } }
       }
     "))
   ),
   
+  # Contenedores dinámicos de UI
   uiOutput("ui_login"),
   uiOutput("ui_reset"),
   uiOutput("ui_reset_confirm"),
@@ -69,7 +64,6 @@ ui <- fluidPage(
 # -----------------------------
 server <- function(input, output, session) {
   
-  # Variables reactivas
   user_logged  <- reactiveVal(FALSE)
   current_user <- reactiveVal(NULL)
   show_view    <- reactiveVal(FALSE) 
@@ -111,9 +105,12 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
   
-  # -----------------------------
-  # Detectar token en URL al iniciar
-  # -----------------------------
+  update_url <- function(page_name) {
+    session$sendCustomMessage("update_url", page_name)
+  }
+  
+  # --- 1. DETECCIÓN INICIAL DE URL (Crucial para el correo) ---
+  # Leemos la URL nada más conectar, antes de que los observes de seguridad actúen
   isolate({
     query <- parseQueryString(session$clientData$url_search)
     token <- query[['token']]
@@ -162,6 +159,10 @@ server <- function(input, output, session) {
       if (exists("pool")) poolClose(pool)
     }, silent = TRUE)
   })
+  
+  resetPasswordServer("resetpass", pool, show_view)
+  # El servidor de confirmación ahora recibirá el token correctamente
+  resetConfirmServer("resetconfirm", pool, show_view)
 }
 
 shinyApp(ui, server, options = list(port = 3841))
