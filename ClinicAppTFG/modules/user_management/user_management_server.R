@@ -11,7 +11,7 @@ userManagementServer <- function(id, pool) {
       }
       
       # Comprobar si existe el usuario
-      exists <- dbGetQuery(pool, "SELECT id FROM usuarios WHERE usuario = ?", params = list(input$usuario))
+      exists <- dbGetQuery(pool, "SELECT id FROM usuarios WHERE usuario = ? OR email = ?", params = list(input$usuario,input$email))
       
       if (nrow(exists) > 0) {
         showNotification("Error: El nombre de usuario ya está registrado.", type = "warning")

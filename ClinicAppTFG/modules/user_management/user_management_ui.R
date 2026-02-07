@@ -1,9 +1,11 @@
 userManagementUI <- function(id) {
   ns <- NS(id)
   
-  div(
-    class = "max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100",
-    h3(class = "text-2xl font-bold text-clinicPurple mb-6", "Dar de alta nuevo personal o paciente"),
+  tagList(
+    # 1. Importamos Tailwind CSS y retocamos los inputs de Shiny
+    tags$head(
+      tags$script(src = "https://cdn.tailwindcss.com"),
+      tags$style(HTML("
     
     div(class = "grid grid-cols-1 md:grid-cols-2 gap-6",
         div(
@@ -25,19 +27,14 @@ userManagementUI <- function(id) {
         div(
           tags$label("Rol del usuario", class = "block text-sm font-bold text-gray-600 mb-2"),
           selectInput(ns("tipo_usuario"), NULL, 
-                      choices = c("Paciente" = "paciente", 
-                                  "Recepción" = "recepcion", 
-                                  "Doctor/Personal Clínico" = "doctor"), 
-                      width = "100%")
+          class = "mt-10 pt-6 border-t border-gray-100 flex justify-end",
+          actionButton(
+            ns("btn_save_user"),
+            "Registrar en el Sistema",
+            class = "bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 transition-all active:scale-95"
+          )
         )
-    ),
-    
-    div(class = "mt-8 flex justify-end",
-        actionButton(
-          ns("btn_save_user"),
-          "Registrar en el Sistema",
-          class = "bg-clinicPurple text-white px-10 py-3 rounded-xl font-bold hover:shadow-lg hover:bg-purple-700 transition-all"
-        )
+      )
     )
   )
 }
