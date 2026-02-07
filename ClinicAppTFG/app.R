@@ -34,13 +34,17 @@ source("modules/user_management/user_management_server.R")
 ui <- fluidPage(
   useShinyjs(),
   tags$head(
-    # Referencia al archivo externo en www/script.js
-    tags$script(src = "script.js"),
-    
     tags$link(rel="stylesheet", type="text/css", href="login_style.css"),
     tags$script(src="https://cdn.tailwindcss.com"),
-    
-    # Configuración de Tailwind
+    # Script para detectar el botón "Atrás" del navegador
+    tags$script(HTML("
+      $(document).on('shiny:connected', function() {
+        window.onpopstate = function(event) {
+          Shiny.setInputValue('url_changed', window.location.search, {priority: 'event'});
+        };
+      });
+    ")),
+    # Config Tailwind
     tags$script(HTML("
       tailwind.config = {
         theme: { extend: { colors: { clinicBlue: '#2563eb', clinicPurple: '#6a0dad' } } }
@@ -64,6 +68,43 @@ server <- function(input, output, session) {
   current_user <- reactiveVal(NULL)
   show_view    <- reactiveVal(FALSE) 
   
+  # --- FUNCION INTERNA PARA ACTUALIZAR URL ---
+  update_url <- function(page_name) {
+    runjs(sprintf("history.pushState({page: '%s'}, '', '?page=%s');", page_name, page_name))
+  }
+  
+  # 1. Gestionar el botón "Atrás"
+  observeEvent(input$url_changed, {
+    query <- parseQueryString(input$url_changed)
+    page <- query[['page']]
+    if (!is.null(page)) {
+      if (page == "login") {
+        user_logged(FALSE)
+        show_view(FALSE)
+      } else if (page == "reset_password") {
+        show_view(TRUE)
+      }
+    }
+  })
+  
+  # 2. Actualizar URL cuando cambia el estado de logueo
+  observeEvent(user_logged(), {
+    if (user_logged()) {
+      update_url("dashboard")
+    } else if (identical(show_view(), FALSE)) {
+      update_url("login")
+    }
+  }, ignoreInit = TRUE)
+  
+  # 3. Actualizar URL cuando cambia la vista de recuperación
+  observeEvent(show_view(), {
+    if (identical(show_view(), TRUE)) {
+      update_url("reset_password")
+    } else if (identical(show_view(), "CONFIRM")) {
+      update_url("reset_confirm")
+    }
+  }, ignoreInit = TRUE)
+  
   update_url <- function(page_name) {
     session$sendCustomMessage("update_url", page_name)
   }
@@ -72,47 +113,20 @@ server <- function(input, output, session) {
   # Leemos la URL nada más conectar, antes de que los observes de seguridad actúen
   isolate({
     query <- parseQueryString(session$clientData$url_search)
-    if (!is.null(query$token) && identical(query$page, "reset_confirm")) {
+    token <- query[['token']]
+    page  <- query[['page']]
+    
+    if (!is.null(token) && page == "reset_confirm") {
       show_view("CONFIRM")
+      shinyjs::delay(100, {
+        runjs("history.replaceState({}, '', window.location.pathname);")
+      })
     }
   })
   
-  # --- 2. REHIDRATACIÓN DE SESIÓN (F5) ---
-  observeEvent(input$recovered_user, {
-    if (!is.null(input$recovered_user) && input$recovered_user != "") {
-      # Si ya detectamos que venimos de un correo de reset, NO auto-logueamos
-      if (identical(show_view(), "CONFIRM")) return()
-      
-      try({
-        user_data <- jsonlite::fromJSON(input$recovered_user)
-        current_user(user_data)
-        user_logged(TRUE)
-      }, silent = TRUE)
-    }
-  })
-  
-  # --- 3. SINCRONIZACIÓN DE ESTADO Y URL ---
-  observe({
-    # Si estamos en modo reset (solicitud o confirmación por token), PARAMOS REDIRECCIÓN
-    if (!is.null(show_view()) && show_view() != FALSE) {
-      return() 
-    }
-    
-    query <- parseQueryString(session$clientData$url_search)
-    page <- query[['page']]
-    
-    if (!user_logged()) {
-      # Si no hay usuario y no estamos reseteando, al login
-      if (is.null(input$recovered_user) || input$recovered_user == "") {
-        update_url("login")
-      }
-    } else {
-      # Si hay usuario, al dashboard (a menos que estemos en reset)
-      if (is.null(page) || page == "login") update_url("dashboard")
-    }
-  })
-  
-  # --- 4. RENDERIZADO DE VISTAS ---
+  # -----------------------------
+  # Renders de UI
+  # -----------------------------
   output$ui_login <- renderUI({
     if (!user_logged() && identical(show_view(), FALSE)) loginUI("login")
   })
@@ -129,28 +143,21 @@ server <- function(input, output, session) {
     if (user_logged()) mainUI("main")
   })
   
-  # --- 5. SERVIDORES ---
+  # -----------------------------
+  # Servidores de Módulos
+  # -----------------------------
   loginServer("login", pool, user_logged, current_user, show_view)
-  
-  # Al loguearse, guardar en el navegador
-  observeEvent(user_logged(), {
-    if (user_logged() && !is.null(current_user())) {
-      session$sendCustomMessage("save_user", current_user())
-      # Solo redirigimos a dashboard si no estamos en medio de un reset
-      if (identical(show_view(), FALSE)) update_url("dashboard")
-    }
-  }, ignoreInit = TRUE)
-  
   mainServer("main", current_user, user_logged, pool)
+  resetPasswordServer("resetpass", pool, show_view)
+  resetConfirmServer("resetconfirm", pool, show_view)
   
-  # Logout
-  observeEvent(input$`main-btn_logout`, {
-    session$sendCustomMessage("clear_user", "")
-    user_logged(FALSE)
-    current_user(NULL)
-    show_view(FALSE)
-    runjs("if(document.getElementById('login-usuario')) document.getElementById('login-usuario').value = '';")
-    update_url("login")
+  # -----------------------------
+  # Cierre seguro de Base de Datos
+  # -----------------------------
+  session$onSessionEnded(function() {
+    try({
+      if (exists("pool")) poolClose(pool)
+    }, silent = TRUE)
   })
   
   resetPasswordServer("resetpass", pool, show_view)
