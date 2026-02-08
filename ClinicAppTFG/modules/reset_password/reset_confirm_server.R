@@ -93,7 +93,11 @@ resetConfirmServer <- function(id, pool, show_view, update_url, token_manual = N
       
       # Volver a login tras 1.5s
       shinyjs::delay(1500, {
-        show_view(FALSE)
+        # 1. Cambiamos la URL visualmente (opcional pero recomendado)
+        updateQueryString("?page=login", mode = "push", session = session)
+        
+        # 2. Cambiamos el estado reactivo para que app.R renderice el Login
+        show_view("LOGIN")
         update_url("login")
       })
     })

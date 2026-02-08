@@ -9,19 +9,15 @@ Shiny.addCustomMessageHandler('save_user', function(data) {
 
 // Borrar usuario de sessionStorage al hacer logout
 Shiny.addCustomMessageHandler('clear_user', function(page) {
-    console.log("Limpieza profunda iniciada...");
-
-    // 1. Limpiar todo el sessionStorage
     sessionStorage.clear();
-
-    // 2. Reemplazar URL actual por la página indicada (login)
-    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?page=" + page;
+    
+    // Si no viene página, por defecto vamos a login
+    const targetPage = page || "login";
+    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?page=" + targetPage;
+    
     window.history.replaceState({}, document.title, cleanUrl);
-
-    console.log("Storage limpio y URL reseteada a:", cleanUrl);
-
-    // 3. Limpiar input de contraseña si existe
-    var passInput = document.getElementById('contraseña');
+    
+    var passInput = document.getElementById('login-contraseña'); // Ojo con el namespace
     if(passInput) passInput.value = '';
 });
 

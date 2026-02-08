@@ -147,7 +147,8 @@ describe("Módulo Login", {
       session$setInputs(forgot_password = 1)
       session$flushReact()
       
-      expect_true(show_view())
+      expect_equal(show_view(), "RESET")
+      
     })
   })
 })

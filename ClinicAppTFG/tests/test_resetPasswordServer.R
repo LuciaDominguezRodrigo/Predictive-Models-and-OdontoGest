@@ -105,12 +105,13 @@ describe("Módulo de Restablecimiento de Contraseña", {
   test_that("Navegación: El botón de volver regresa al Login", {
     show_view_mock <- mock()
     
-    testServer(resetPasswordServer, args = list(pool = "pool", show_view = show_view_mock), {
+    testServer(resetPasswordServer, args = list(pool = "pool", show_view = show_view_mock,  update_url = mock()), {
       session$setInputs(back_login = 1)
       
       # Verifica que se llamó a la función de cambio de vista con FALSE
       expect_called(show_view_mock, 1)
-      expect_args(show_view_mock, 1, FALSE)
+      expect_args(show_view_mock, 1, "LOGIN")
+      
     })
   })
 })

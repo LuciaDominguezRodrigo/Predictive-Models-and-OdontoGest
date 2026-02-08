@@ -3,64 +3,87 @@ loginUI <- function(id) {
   
   tagList(
     div(
-      class = "w-screen h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100",
+      # Contenedor principal centrado (Bootstrap)
+      style = "min-height: 100vh; display: flex; align-items: center; justify-content: center; 
+               background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 20px;",
       
       div(
-        class = "bg-white w-[450px] p-12 rounded-3xl shadow-2xl border border-gray-100/50",
+        class = "panel panel-default",
+        style = "width: 100%; max-width: 450px; border-radius: 25px; border: none; 
+                 box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); overflow: hidden;",
         
-        # Título - Tamaño aumentado a text-4xl
         div(
-          class = "text-center mb-10",
-          h2(class = "text-4xl font-bold text-clinicPurple tracking-tight", "Login Clínica"),
-          p(class = "text-gray-500 text-lg mt-3", "Bienvenido, por favor ingresa tus datos")
-        ),
-        
-        # Campo Usuario
-        div(
-          class = "mb-8",
-          tags$label("Usuario", `for` = ns("usuario"), 
-                     class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-3 ml-1"),
-          tags$input(
-            id = ns("usuario"),
-            type = "text",
-            placeholder = "Introduce tu usuario",
-            # Aumentado: py-4 (padding) y text-lg (fuente)
-            class = "w-full px-5 py-4 text-lg rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-purple-100 focus:border-clinicPurple outline-none transition-all duration-200"
-          )
-        ),
-        
-        # Campo Contraseña
-        div(
-          class = "mb-10",
-          tags$label("Contraseña", `for` = ns("contraseña"), 
-                     class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-3 ml-1"),
-          tags$input(
-            id = ns("contraseña"),
-            type = "password",
-            placeholder = "••••••••",
-            class = "w-full px-5 py-4 text-lg rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-purple-100 focus:border-clinicPurple outline-none transition-all duration-200"
-          )
-        ),
-        
-        actionButton(
-          ns("btn_login"),
-          "Ingresar al Sistema",
-          class = "w-full py-5 rounded-xl text-white text-xl font-bold tracking-wide bg-clinicPurple hover:bg-purple-700 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-purple-200"
-        ),
-        
-        # Mensaje de error 
-        div(
-          class = "mt-6 text-center text-base text-red-500 font-medium min-h-[24px]",
-          textOutput(ns("login_msg"))
-        ),
-        
-        # Olvidé contraseña 
-        div(
-          class = "mt-8 text-center",
-          actionLink(
-            ns("forgot_password"),
-            label = "Olvidé mi contraseña",
-            class = "text-lg text-gray-400 hover:text-clinicPurple transition-colors font-medium"
+          class = "panel-body",
+          style = "padding: 50px;",
+          
+          # Título
+          div(
+            class = "text-center",
+            style = "margin-bottom: 40px;",
+            h2(style = "font-weight: 800; color: #6a0dad; margin-bottom: 10px;", "Login"),
+            p(style = "color: #64748b; font-size: 1.1rem;", "Introduce tus credenciales")
+          ),
+          
+          # Campo Usuario
+          div(
+            class = "form-group",
+            style = "margin-bottom: 25px;",
+            tags$label("Usuario", style = "font-weight: 700; color: #475569; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em;"),
+            tags$input(
+              id = ns("usuario"),
+              type = "text",
+              class = "form-control",
+              placeholder = "Tu usuario",
+              style = "height: 50px; border-radius: 12px; border: 1px solid #e2e8f0; background-color: #f8fafc;"
+            )
+          ),
+          
+          # Campo Contraseña
+          div(
+            class = "form-group",
+            style = "margin-bottom: 30px;",
+            tags$label("Contraseña", style = "font-weight: 700; color: #475569; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em;"),
+            tags$input(
+              id = ns("contraseña"),
+              type = "password",
+              class = "form-control",
+              placeholder = "••••••••",
+              style = "height: 50px; border-radius: 12px; border: 1px solid #e2e8f0; background-color: #f8fafc;"
+            )
+          ),
+          
+          # Botón Login
+          actionButton(
+            ns("btn_login"),
+            "Ingresar al Sistema",
+            class = "btn btn-primary btn-block",
+            style = "background-color: #6a0dad; border: none; height: 55px; border-radius: 15px; 
+                     font-size: 1.2rem; font-weight: 700; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(106, 13, 173, 0.2);"
+          ),
+          
+          # Mensaje de error
+          div(
+            class = "text-center",
+            style = "margin-top: 20px; color: #ef4444; font-weight: 500; min-height: 24px;",
+            textOutput(ns("login_msg"))
+          ),
+          
+          # Enlaces inferiores
+          hr(style = "margin: 30px 0; border-color: #f1f5f9;"),
+          
+          div(
+            class = "text-center",
+            style = "display: flex; flex-direction: column; gap: 15px;",
+            actionLink(
+              ns("forgot_password"),
+              label = "Olvidé mi contraseña",
+              style = "color: #94a3b8; font-weight: 500; text-decoration: none;"
+            ),
+            actionLink(
+              ns("guest_access"),
+              label = "Ver consejos de salud dental",
+              style = "color: #2563eb; font-weight: 700; text-decoration: none;"
+            )
           )
         )
       )

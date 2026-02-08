@@ -61,7 +61,7 @@ enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_r
 
 
 # SERVIDOR DEL MÓDULO (Lógica de solicitud de correo)
-resetPasswordServer <- function(id, pool, show_view) {
+resetPasswordServer <- function(id, pool, show_view,  update_url) {
   moduleServer(id, function(input, output, session){
     
     observeEvent(input$btn_reset, {
@@ -138,8 +138,14 @@ resetPasswordServer <- function(id, pool, show_view) {
     })
     
     observeEvent(input$back_login, {
-      updateQueryString("", mode = "replace", session = session)
-      show_view(FALSE)
+      # Limpiamos la query de la URL
+      updateQueryString("?page=login", mode = "push", session = session)
+      
+      # Cambiamos el estado a LOGIN (el string exacto que espera app.R)
+      show_view("LOGIN") 
+      
+      # Actualizamos el historial del navegador si es necesario
+      update_url("login")
     })
     
   })
