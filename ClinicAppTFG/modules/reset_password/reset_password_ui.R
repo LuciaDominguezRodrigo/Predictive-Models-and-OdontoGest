@@ -2,46 +2,68 @@ resetPasswordUI <- function(id) {
   ns <- NS(id)
   tagList(
     div(
-      class = "w-screen h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100",
+      # Contenedor centrado consistente con los otros módulos
+      style = "min-height: 100vh; display: flex; align-items: center; justify-content: center; 
+               background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 20px;",
       
       div(
-        class = "bg-white w-[450px] p-12 rounded-3xl shadow-2xl border border-gray-100/50",
+        class = "panel panel-default",
+        style = "width: 100%; max-width: 450px; border-radius: 25px; border: none; 
+                 box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); overflow: hidden;",
         
         div(
-          class = "text-center mb-10",
-          h2(class = "text-4xl font-bold text-clinicPurple tracking-tight", "Recuperar Contraseña"),
-          p(class = "text-gray-500 text-lg mt-4 px-2", "Escribe tu correo para restablecer tu cuenta")
-        ),
-        
-        div(
-          class = "mb-8",
-          tags$label("Usuario o Correo Electrónico", `for` = ns("usuario_reset"), 
-                     class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-3 ml-1"),
-          tags$input(
-            id = ns("usuario_reset"),
-            type = "text",
-            placeholder = "ejemplo@correo.com",
-            class = "w-full px-5 py-4 text-lg rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-purple-100 focus:border-clinicPurple outline-none transition-all duration-200"
+          class = "panel-body",
+          style = "padding: 50px;",
+          
+          # Título y subtítulo
+          div(
+            class = "text-center",
+            style = "margin-bottom: 40px;",
+            h2(style = "font-weight: 800; color: #6a0dad; margin-bottom: 15px;", "Recuperar Contraseña"),
+            p(style = "color: #64748b; font-size: 1.1rem;", "Escribe tu correo para restablecer tu cuenta")
+          ),
+          
+          # Campo Usuario/Email
+          div(
+            class = "form-group",
+            style = "margin-bottom: 30px;",
+            tags$label("Usuario o Correo Electrónico", 
+                       style = "font-weight: 700; color: #475569; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; display: block; margin-bottom: 10px;"),
+            tags$input(
+              id = ns("usuario_reset"),
+              type = "text",
+              class = "form-control",
+              placeholder = "ejemplo@correo.com",
+              style = "height: 50px; border-radius: 12px; border: 1px solid #e2e8f0; background-color: #f8fafc;"
+            )
+          ),
+          
+          # Botón Enviar
+          actionButton(
+            ns("btn_reset"),
+            "Enviar enlace",
+            class = "btn btn-primary btn-block",
+            style = "background-color: #6a0dad; border: none; height: 55px; border-radius: 15px; 
+                     font-size: 1.2rem; font-weight: 700; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(106, 13, 173, 0.2);"
+          ),
+          
+          # Enlace para volver
+          div(
+            class = "text-center",
+            style = "margin-top: 30px;",
+            actionLink(
+              ns("back_login"),
+              label = "Volver al inicio de sesión",
+              style = "color: #94a3b8; font-weight: 500; text-decoration: none; font-size: 1rem;"
+            )
+          ),
+          
+          # Contenedor de mensaje de éxito/error
+          div(
+            style = "margin-top: 20px;",
+            uiOutput(ns("reset_msg_ui"))
           )
-        ),
-        
-        actionButton(
-          ns("btn_reset"),
-          "Enviar enlace",
-          class = "w-full py-5 rounded-xl text-white text-xl font-bold tracking-wide bg-clinicPurple hover:bg-purple-700 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-purple-200"
-        ),
-        
-        div(
-          class = "mt-8 text-center",
-          actionLink(
-            ns("back_login"),
-            label = "Volver al inicio de sesión",
-            class = "text-lg text-gray-400 hover:text-clinicPurple transition-colors font-medium"
-          )
-        ),
-        
-        # Contenedor de mensaje de éxito/error
-        uiOutput(ns("reset_msg_ui"), class = "mt-6 text-center text-lg")
+        )
       )
     )
   )
