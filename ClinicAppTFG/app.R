@@ -13,6 +13,8 @@ library(jsonlite)
 source("global.R")
 source("db_init.R")    
 
+
+
 # Módulos
 source("modules/login/login_ui.R")
 source("modules/login/login_server.R")
@@ -57,7 +59,7 @@ server <- function(input, output, session) {
   # Estado global
   user_logged  <- reactiveVal(FALSE)
   current_user <- reactiveVal(NULL)
-  show_view    <- reactiveVal(FALSE)  # FALSE=login, TRUE=reset, "CONFIRM"=token
+  show_view    <- reactiveVal(FALSE) 
   
   # --- Función para actualizar URL
   update_url <- function(page_name) {
@@ -82,7 +84,7 @@ server <- function(input, output, session) {
   })
   
   # -----------------------------
-  # 2. Rehidratación de sesión desde LocalStorage
+  # 2. Rehidratación de sesión desde sessionStorage
   # -----------------------------
   observeEvent(input$recovered_user, {
     req(input$recovered_user)
