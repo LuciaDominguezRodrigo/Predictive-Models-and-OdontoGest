@@ -29,3 +29,8 @@ window.onpopstate = function(event) {
 Shiny.addCustomMessageHandler('update_url', function(page_name) {
     history.pushState({page: page_name}, '', '?page=' + page_name);
 });
+
+// vamos a poner esto porque si no me guarda la sesion y para probar lo programado es un tostón
+$(document).on('shiny:connected', function() {
+    sessionStorage.removeItem('clinic_session');
+});
