@@ -163,7 +163,7 @@ server <- function(input, output, session) {
   
   # 7. Servidores de módulos
   # ASEGÚRATE de que estos archivos acepten estos argumentos
-  landingServer("landing", show_view)
+  landingServer("landing", show_view,pool)
   loginServer("login", pool, user_logged, current_user, show_view, update_url)
   mainServer("main", current_user, user_logged, pool)
   resetPasswordServer("resetpass", pool, show_view, update_url)

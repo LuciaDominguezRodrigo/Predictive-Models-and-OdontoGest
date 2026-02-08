@@ -77,6 +77,16 @@ CREATE TABLE IF NOT EXISTS tratamientos (
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
+dbExecute(pool, "
+CREATE TABLE IF NOT EXISTS contacto (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  email VARCHAR(100) NOT NULL,
+  mensaje TEXT NOT NULL,
+  fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+) DEFAULT CHARSET = utf8mb4;
+")
+
 # -----------------------------
 #  Funciones para insertar datos iniciales
 # -----------------------------
@@ -101,6 +111,12 @@ insert_tratamiento <- function(nombre, descripcion=""){
   cat("Tratamiento creado: ", nombre, "\n")
 }
 
+insert_contacto <- function(nombre, email, mensaje){
+  dbExecute(pool, "INSERT INTO contacto (nombre, email, mensaje) VALUES (?,?,?)",
+            params=list(nombre, email, mensaje))
+  cat("Mensaje de contacto guardado: ", nombre, "\n")
+}
+
 # -----------------------------
 #  Insertar datos iniciales (solo si RESET_DB = TRUE)
 # -----------------------------
@@ -114,6 +130,9 @@ if (RESET_DB) {
   
   insert_tratamiento("Limpieza dental", "Limpieza y pulido de dientes")
   insert_tratamiento("Empaste", "Tratamiento de cavidad dental")
+  
+  insert_contacto("Usuario Prueba", "prueba@correo.com", "Hola, me gustaría pedir información sobre ortodoncia.")
+  message("Datos de contacto iniciales insertados.")
   
   message("Datos iniciales insertados.")
 }

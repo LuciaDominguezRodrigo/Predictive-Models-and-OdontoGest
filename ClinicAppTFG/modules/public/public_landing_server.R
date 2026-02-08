@@ -1,14 +1,41 @@
-landingServer <- function(id, show_view) {
+landingServer <- function(id, show_view, pool) { # <--- Añadido 'pool'
   moduleServer(id, function(input, output, session) {
     
-    # Al hacer clic en el botón de Acceso Profesionales
+    # Navegación al Login
     observeEvent(input$go_to_login, {
-      # 1. Cambiamos la URL visualmente (opcional pero recomendado)
       updateQueryString("?page=login", mode = "push", session = session)
-      
-      # 2. Cambiamos el estado reactivo para que app.R renderice el Login
       show_view("LOGIN")
     })
     
+    # Lógica del Formulario
+    observeEvent(input$send_contact, {
+      # Validaciones simples
+      if(input$contact_name == "" || input$contact_email == "" || input$contact_msg == "") {
+        showNotification("Por favor, rellena todos los campos.", type = "warning")
+        return()
+      }
+      
+      # Guardar en Base de Datos
+      tryCatch({
+        dbExecute(pool, 
+                  "INSERT INTO contacto (nombre, email, mensaje) VALUES (?, ?, ?)", 
+                  list(input$contact_name, input$contact_email, input$contact_msg))
+        
+        # Feedback y limpieza
+        showModal(modalDialog(
+          title = "¡Mensaje Enviado!",
+          "Gracias por contactar con Clínica Bienestar. Le responderemos pronto.",
+          footer = modalButton("Cerrar"),
+          easyClose = TRUE
+        ))
+        
+        updateTextInput(session, "contact_name", value = "")
+        updateTextInput(session, "contact_email", value = "")
+        updateTextAreaInput(session, "contact_msg", value = "")
+        
+      }, error = function(e) {
+        showNotification("Error al guardar el mensaje.", type = "error")
+      })
+    })
   })
 }
