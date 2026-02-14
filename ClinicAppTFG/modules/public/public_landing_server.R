@@ -18,8 +18,8 @@ landingServer <- function(id, show_view, pool) { # <--- Añadido 'pool'
       # Guardar en Base de Datos
       tryCatch({
         dbExecute(pool, 
-                  "INSERT INTO contacto (nombre, email, mensaje) VALUES (?, ?, ?)", 
-                  list(input$contact_name, input$contact_email, input$contact_msg))
+                  "INSERT INTO contacto (nombre, email, mensaje, leido) VALUES (?, ?, ?,?)", 
+                  list(input$contact_name, input$contact_email, input$contact_msg, FALSE))
         
         # Feedback y limpieza
         showModal(modalDialog(
