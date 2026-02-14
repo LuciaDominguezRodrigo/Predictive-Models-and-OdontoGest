@@ -44,6 +44,8 @@ mainServer <- function(id, current_user, user_logged, pool) {
       do.call(tabsetPanel, c(list(id = ns("main_tabs")), tabs))
     })
     
+    
+    
     # Importante: el servidor del módulo debe estar fuera del renderUI
     userManagementServer("create_user_mod", pool)
     
