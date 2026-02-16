@@ -2,6 +2,7 @@ library(testthat)
 library(shiny)
 library(mockery)
 library(pool)
+library(emayili)
 
 # Cargamos el código del módulo (asumiendo que está en un archivo llamado module_contact.R)
 source("../modules/contact_management/contact_management_server.R")
