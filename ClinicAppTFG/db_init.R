@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS contacto (
   email VARCHAR(100) NOT NULL,
   mensaje TEXT NOT NULL,
   fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-  leido BOOLEAN DEFAULT FALSE
+  leido BOOLEAN DEFAULT FALSE, 
+  respuesta TEXT DEFAULT NULL,
+  fecha_respuesta DATETIME DEFAULT NULL
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
@@ -132,7 +134,7 @@ if (RESET_DB) {
   insert_tratamiento("Limpieza dental", "Limpieza y pulido de dientes")
   insert_tratamiento("Empaste", "Tratamiento de cavidad dental")
   
-  insert_contacto("Usuario Prueba", "prueba@correo.com", "Hola, me gustaría pedir información sobre ortodoncia.")
+  insert_contacto("Usuario Prueba", "lucia.dominguez.rodrigo@gmail.com", "Hola, me gustaría pedir información sobre ortodoncia.")
   message("Datos de contacto iniciales insertados.")
   
   message("Datos iniciales insertados.")
