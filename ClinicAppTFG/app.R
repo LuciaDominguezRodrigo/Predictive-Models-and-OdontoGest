@@ -45,6 +45,9 @@ source("modules/user_management/user_management_server.R")
 source("modules/public/public_landing_UI.R")
 source("modules/public/public_landing_server.R")
 
+#gestión de respuesta al formulario de la web
+source("modules/contact_management/contact_management_UI.R")
+source("modules/contact_management/contact_management_server.R")
 # -----------------------------
 # UI principal
 # -----------------------------
