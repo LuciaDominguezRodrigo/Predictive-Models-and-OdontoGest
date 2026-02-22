@@ -65,6 +65,7 @@ resetPasswordServer <- function(id, pool, show_view,  update_url) {
   moduleServer(id, function(input, output, session){
     
     observeEvent(input$btn_reset, {
+      req(pool)
       req(input$usuario_reset)
       usuario_input <- input$usuario_reset
       

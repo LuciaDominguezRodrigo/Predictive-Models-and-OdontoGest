@@ -1,12 +1,19 @@
-contactManagementServer <- function(id, pool) {
+library(emayili)
+
+contactManagementServer <- function(id, pool, .test_refresh = FALSE) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # Trigger para refrescar datos
+    # --- TEST REFRESH COUNTER (solo para tests) ---
     refresh <- reactiveVal(0)
+    if (.test_refresh) {
+      observe({
+        mensajes_pendientes()   # fuerza la reevaluación
+        refresh(refresh() + 1)  # contador visible en testServer()
+      })
+    }
     
-    # --- Configuración SMTP ---
-    # Nota: En producción, considera mover esto a variables de entorno
+    # --- 1. CONFIGURACIÓN SMTP ---
     smtp_server <- server(
       host = "smtp.gmail.com",
       port = 465,
@@ -14,115 +21,182 @@ contactManagementServer <- function(id, pool) {
       password = "qffj vlrz kmzq jpwz"
     )
     
-    # --- Datos de Mensajes ---
-    mensajes_pendientes <- reactive({
-      refresh()
-      req(pool)
-      dbGetQuery(pool, "SELECT * FROM contacto WHERE leido = FALSE ORDER BY fecha DESC")
-    })
+    # --- 2. DATOS REACTIVOS ---
+    mensajes_pendientes <- reactivePoll(
+      3000, session,
+      checkFunc = function() {
+        dbGetQuery(pool, 
+                   "SELECT COUNT(*) FROM contacto WHERE leido = FALSE")[1, 1]
+      },
+      valueFunc = function() {
+        dbGetQuery(pool,
+                   "SELECT * FROM contacto WHERE leido = FALSE ORDER BY fecha DESC")
+      }
+    )
     
-    mensajes_historial <- reactive({
-      refresh()
-      req(pool)
-      dbGetQuery(pool, "SELECT * FROM contacto WHERE leido = TRUE ORDER BY fecha_respuesta DESC")
-    })
+    mensajes_historial <- reactivePoll(
+      3000, session,
+      checkFunc = function() {
+        dbGetQuery(pool,
+                   "SELECT COUNT(*) FROM contacto WHERE leido = TRUE")[1, 1]
+      },
+      valueFunc = function() {
+        dbGetQuery(pool,
+                   "SELECT * FROM contacto WHERE leido = TRUE ORDER BY fecha_respuesta DESC")
+      }
+    )
     
-    # --- UI: Lista de Pendientes ---
+    # --- 3. UI LISTA PENDIENTES ---
     output$mensajes_lista <- renderUI({
       df <- mensajes_pendientes()
       if (nrow(df) == 0) {
-        return(div(class="text-center py-20 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200",
-                   icon("clipboard-check", class="text-purple-300 text-6xl mb-4"),
-                   h4(class="text-gray-400 text-xl font-bold", "¡Buzón vacío!")))
+        return(div(
+          class = "text-center py-5 bg-light rounded-4 border border-2 border-dashed text-muted",
+          icon("clipboard-check", class = "display-1 mb-3 opacity-50"),
+          h4(class = "fw-bold", "¡Buzón vacío!")
+        ))
       }
       
-      tagList(
-        lapply(1:nrow(df), function(i) {
-          msg <- df[i, ]
-          div(class = "w-full p-6 md:p-8 mb-6 rounded-[1.5rem] border-l-[10px] border-purple-600 bg-white shadow-lg flex flex-col gap-4",
-              div(class = "flex justify-between items-start",
-                  div(
-                    span(class = "block text-2xl font-black text-purple-900", msg$nombre),
-                    span(class = "text-indigo-500 font-bold text-base", msg$email)
-                  ),
-                  span(class = "bg-purple-100 text-purple-700 text-xs font-black px-4 py-1 rounded-full", "NUEVO")
+      tagList(lapply(seq_len(nrow(df)), function(i) {
+        msg <- df[i, ]
+        div(
+          class = "card mb-4 shadow-sm border-0 border-start border-5 border-primary",
+          div(
+            class = "card-body p-4",
+            div(
+              class = "d-flex justify-content-between align-items-start mb-3",
+              div(
+                h4(class = "fw-bold text-dark mb-0", msg$nombre),
+                span(class = "text-primary fw-bold small", msg$email)
               ),
-              div(class = "p-5 bg-purple-50 rounded-xl border border-purple-100 text-lg text-gray-700 italic",
-                  paste0("\"", msg$mensaje, "\"")),
-              div(class = "flex gap-3",
-                  # Usamos IDs consistentes: prefijo_ID
-                  actionButton(ns(paste0("btn_reply_", msg$id)), "Responder", 
-                               onclick = sprintf("Shiny.setInputValue('%s', %d, {priority: 'event'})", ns("target_reply"), msg$id),
-                               class = "flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl shadow-md"),
-                  actionButton(ns(paste0("btn_archive_", msg$id)), "Archivar", 
-                               onclick = sprintf("Shiny.setInputValue('%s', %d, {priority: 'event'})", ns("target_archive"), msg$id),
-                               class = "px-6 bg-gray-100 text-gray-500 font-bold py-3 rounded-xl")
+              span(class = "badge rounded-pill bg-primary px-3", "NUEVO")
+            ),
+            div(
+              class = "p-3 bg-light rounded-3 border mb-3 text-secondary fst-italic",
+              paste0("\"", msg$mensaje, "\"")
+            ),
+            div(
+              class = "d-flex gap-2",
+              actionButton(
+                ns(paste0("btn_rep_", msg$id)), "Responder",
+                onclick = sprintf(
+                  "Shiny.setInputValue('%s', %d, {priority:'event'})",
+                  ns("target_reply"), msg$id
+                ),
+                class = "btn btn-primary flex-grow-1 fw-bold py-2"
+              ),
+              actionButton(
+                ns(paste0("btn_arc_", msg$id)), "Archivar",
+                onclick = sprintf(
+                  "Shiny.setInputValue('%s', %d, {priority:'event'})",
+                  ns("target_archive"), msg$id
+                ),
+                class = "btn btn-outline-secondary py-2"
               )
+            )
           )
-        })
-      )
+        )
+      }))
     })
     
-    # --- UI: Historial ---
+    # --- 4. UI HISTORIAL ---
     output$mensajes_archivados <- renderUI({
-      df_arch <- mensajes_historial()
-      if (nrow(df_arch) == 0) return(p(class="text-gray-400 text-center py-10", "No hay mensajes en el historial."))
+      df <- mensajes_historial()
+      if (nrow(df) == 0)
+        return(
+          p(class = "text-muted text-center py-5", "No hay mensajes en el historial.")
+        )
       
-      tagList(
-        lapply(1:nrow(df_arch), function(i) {
-          msg <- df_arch[i, ]
-          div(class = "w-full p-6 mb-4 rounded-2xl bg-white border border-gray-200 shadow-sm",
-              div(class = "flex flex-wrap justify-between mb-3 gap-2",
-                  span(class = "text-xl font-bold text-gray-800", msg$nombre),
-                  span(class = "text-gray-400 text-sm italic", paste("Respondido el:", msg$fecha_respuesta))
-              ),
-              div(class = "mb-3 text-gray-600 border-l-2 border-gray-100 pl-4",
-                  p(class = "italic text-sm", msg$mensaje)),
-              div(class = "p-4 bg-green-50 rounded-xl border-l-4 border-green-500",
-                  span(class = "text-xs font-bold uppercase text-green-700", "Respuesta:"),
-                  p(class = "text-gray-800", msg$respuesta))
+      tagList(lapply(seq_len(nrow(df)), function(i) {
+        msg <- df[i, ]
+        div(
+          class = "card mb-3 border-light shadow-sm",
+          div(
+            class = "card-body p-4",
+            div(
+              class = "d-flex justify-content-between align-items-center mb-2",
+              h5(class = "fw-bold text-dark mb-0", msg$nombre),
+              tags$small(class = "text-muted",
+                         paste("Respondido:", msg$fecha_respuesta))
+            ),
+            div(
+              class = "mb-3 text-muted small border-start ps-3",
+              p(class = "mb-0", msg$mensaje)
+            ),
+            div(
+              class = "p-3 bg-success bg-opacity-10 border-start border-success border-4 rounded-3",
+              tags$b(class = "text-success small d-block mb-1", "RESPUESTA:"),
+              p(class = "text-dark mb-0", msg$respuesta)
+            )
           )
-        })
-      )
+        )
+      }))
     })
     
-    # --- Lógica de Acciones (Single Observers) ---
+    # --- 5. LÓGICA ---
     
-    # 1. ARCHIVAR
+    rv_active_msg <- reactiveValues(
+      id = NULL,
+      email = NULL,
+      nombre = NULL
+    )
+    
+    # ARCHIVAR
     observeEvent(input$target_archive, {
-      id_to_archive <- input$target_archive
-      dbExecute(pool, "UPDATE contacto SET leido = TRUE, fecha_respuesta = NOW(), respuesta = 'Archivado manualmente' WHERE id = ?", list(id_to_archive))
-      refresh(refresh() + 1)
-      showNotification("Mensaje archivado", type = "message")
+      req(pool)
+      tryCatch({
+        dbExecute(pool,
+                  "UPDATE contacto 
+                   SET leido = TRUE, fecha_respuesta = NOW(), respuesta = 'Archivado manualmente'
+                   WHERE id = ?",
+                  list(input$target_archive))
+        
+        showNotification("Mensaje movido al historial",
+                         type = "message")
+      },
+      error = function(e) {
+        showNotification("Error al archivar", type = "error")
+      })
     })
     
-    # 2. ABRIR MODAL RESPUESTA
-    rv_active_msg <- reactiveValues(id = NULL, email = NULL, nombre = NULL)
-    
+    # ABRIR MODAL
     observeEvent(input$target_reply, {
-      id_to_reply <- input$target_reply
-      # Obtenemos los datos del mensaje específico
       df <- mensajes_pendientes()
-      msg_data <- df[df$id == id_to_reply, ]
+      msg <- df[df$id == input$target_reply, ]
       
-      rv_active_msg$id <- msg_data$id
-      rv_active_msg$email <- msg_data$email
-      rv_active_msg$nombre <- msg_data$nombre
+      if (nrow(msg) == 0)
+        return()
+      
+      rv_active_msg$id <- msg$id
+      rv_active_msg$email <- msg$email
+      rv_active_msg$nombre <- msg$nombre
       
       showModal(modalDialog(
-        title = div(class="text-2xl font-black text-purple-900", paste("Responder a", msg_data$nombre)),
-        textAreaInput(ns("email_body"), NULL, rows = 6, width = "100%", placeholder = "Escribe tu respuesta..."),
+        title = div(class = "text-primary fw-bold",
+                    paste("Responder a", msg$nombre)),
+        textAreaInput(
+          ns("email_body"),
+          "Mensaje de respuesta:",
+          rows = 6,
+          width = "100%",
+          placeholder = "Escribe aquí..."
+        ),
         footer = tagList(
           modalButton("Cancelar"),
-          actionButton(ns("confirm_send"), "Enviar Respuesta", class = "bg-purple-600 text-white font-bold px-6 py-2 rounded-lg")
+          actionButton(ns("confirm_send"),
+                       "Enviar y Archivar",
+                       class = "btn btn-primary fw-bold px-4")
         ),
-        size = "l", easyClose = FALSE
+        size = "l",
+        easyClose = FALSE
       ))
     })
     
-    # 3. ENVIAR EMAIL Y ACTUALIZAR
+    # ENVIAR EMAIL
     observeEvent(input$confirm_send, {
-      req(input$email_body, rv_active_msg$id)
+      req(rv_active_msg$id, input$email_body)
+      
+      shinyjs::disable("confirm_send")
       
       tryCatch({
         email <- envelope() %>%
@@ -133,16 +207,28 @@ contactManagementServer <- function(id, pool) {
         
         smtp_server(email)
         
-        dbExecute(pool, 
-                  "UPDATE contacto SET leido = TRUE, respuesta = ?, fecha_respuesta = NOW() WHERE id = ?", 
+        dbExecute(pool,
+                  "UPDATE contacto 
+                   SET leido = TRUE, respuesta = ?, fecha_respuesta = NOW()
+                   WHERE id = ?",
                   list(input$email_body, rv_active_msg$id))
         
         removeModal()
-        showNotification("Respuesta enviada correctamente", type = "message")
-        refresh(refresh() + 1)
-      }, error = function(e) {
-        showNotification(paste("Error:", e$message), type = "error")
+        showNotification("Respuesta enviada y mensaje archivado",
+                         type = "message")
+      },
+      error = function(e) {
+        showNotification(
+          paste("Error al enviar correo:", e$message),
+          type = "error"
+        )
       })
     })
+    
+    # --- EXPOSICIÓN PARA TESTS ---
+    if (.test_refresh)
+      return(list(refresh = refresh,
+                  mensajes_pendientes = mensajes_pendientes,
+                  rv_active_msg = rv_active_msg))
   })
 }

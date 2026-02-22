@@ -1,37 +1,39 @@
+library(bslib)
+
+
 contactManagementUI <- function(id) {
   ns <- NS(id)
-  div(class = "w-full min-h-screen bg-purple-50 p-4 md:p-8",
-      div(class = "w-full bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-purple-100",
+  div(class = "container-fluid py-4",
+      div(class = "card shadow-lg border-0 rounded-4 overflow-hidden",
           
-          # Encabezado corregido (Texto Blanco)
-          div(class = "bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-900 p-8 md:p-12 text-white",
-              div(class = "flex flex-col md:flex-row justify-between items-center gap-6",
-                  div(class = "text-center md:text-left",
-                      h3(class = "text-4xl md:text-5xl font-black tracking-tight text-white", "Buzón de Consultas"),
-                      p(class = "text-purple-100 mt-2 text-lg font-light", "Gestión y seguimiento de atención al paciente.")
+          # Encabezado con degradado CSS estándar
+          div(class = "p-4 p-md-5 text-white",
+              style = "background: linear-gradient(135deg, #6b21a8 0%, #4338ca 100%);",
+              div(class = "d-flex justify-content-between align-items-center",
+                  div(
+                    h2(class = "display-5 fw-bold mb-1", "Buzón de Consultas"),
+                    p(class = "lead mb-0 opacity-75", "Gestión y seguimiento de atención al paciente.")
                   ),
-                  icon("paper-plane", class = "text-6xl md:text-8xl opacity-20 hidden md:block")
+                  icon("paper-plane", class = "display-1 opacity-25 d-none d-md-block")
               )
           ),
           
-          # Sistema de Pestañas (Tabs)
-          div(class = "p-4 md:p-10",
+          # Cuerpo con Pestañas
+          div(class = "card-body p-4",
               tabsetPanel(
                 id = ns("buzon_tabs"),
-                type = "pills", # Estilo moderno de botones
+                type = "pills", 
                 
-                # Pestaña 1: Pendientes
                 tabPanel(
-                  title = div(class="px-4 py-2 font-bold", "📥 Pendientes"),
-                  div(class = "mt-8",
+                  title = "📥 Pendientes",
+                  div(class = "mt-4 px-2",
                       uiOutput(ns("mensajes_lista"))
                   )
                 ),
                 
-                # Pestaña 2: Historial
                 tabPanel(
-                  title = div(class="px-4 py-2 font-bold", "📂 Historial"),
-                  div(class = "mt-8",
+                  title = "📂 Historial",
+                  div(class = "mt-4 px-2",
                       uiOutput(ns("mensajes_archivados"))
                   )
                 )
@@ -40,3 +42,9 @@ contactManagementUI <- function(id) {
       )
   )
 }
+
+
+ui <- fluidPage(
+  theme = bs_theme(version = 5, bootswatch = "flatly"),  # o el tema que quieras
+  contactManagementUI("contact")
+)

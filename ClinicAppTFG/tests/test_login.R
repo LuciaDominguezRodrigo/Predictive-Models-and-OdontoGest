@@ -35,7 +35,8 @@ describe("Módulo Login", {
     user_data <- data.frame(
       id = 1,
       usuario = "usuario1",
-      password_hash = bcrypt::hashpw("pass123")
+      password_hash = bcrypt::hashpw("pass123"),
+      banneado = 1
     )
     
     # Mocks
@@ -151,4 +152,42 @@ describe("Módulo Login", {
       
     })
   })
-})
+
+  # --- Caso 5: Usuario baneado ---
+  test_that("Login falla si usuario está baneado", {
+    user_data <- data.frame(
+      id = 2,
+      usuario = "baneado1",
+      password_hash = bcrypt::hashpw("pass123"),
+      banneado = 0
+    )
+    
+    # Mocks
+    m_query <- mock(user_data)
+    stub(loginServer, "dbGetQuery", m_query)
+    stub(loginServer, "checkpw", function(pw, hash) TRUE) # La contraseña sería correcta
+    
+    user_logged <- reactiveVal(FALSE)
+    current_user <- reactiveVal(NULL)
+    
+    testServer(loginServer, args = list(
+      id = "login5",
+      pool = "pool_simulado",
+      user_logged = user_logged,
+      current_user = current_user,
+      show_view = reactiveVal(FALSE)
+    ), {
+      session$setInputs(
+        usuario = "baneado1",
+        contraseña = "pass123",
+        btn_login = 1
+      )
+      session$flushReact()
+      
+      # Verificaciones
+      expect_false(user_logged())
+      expect_null(current_user())
+      expect_equal(output$login_msg, "❌ Usuario baneado. Contacte con administración")
+    })
+  })
+  })

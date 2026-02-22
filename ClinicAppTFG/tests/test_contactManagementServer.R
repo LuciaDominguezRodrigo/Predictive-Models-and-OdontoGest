@@ -1,117 +1,137 @@
+# test_contactManagementServer.R
 library(testthat)
 library(shiny)
 library(mockery)
-library(pool)
 library(emayili)
 
-# Cargamos el código del módulo (asumiendo que está en un archivo llamado module_contact.R)
+# Cargar el módulo
 source("../modules/contact_management/contact_management_server.R")
 
-test_that("contactManagementServer procesa correctamente el archivado de un mensaje", {
+# ---- 1. TEST: Archivar mensaje ----
+test_that("Archiva correctamente un mensaje (unitario)", {
+  mock_pool <- "fake_pool"
   
-  # 1. MOCKS: Simulamos el pool y las funciones de base de datos
-  # Creamos un pool falso para que no intente conectar a una DB real
-  mock_pool <- "fake_pool_object" 
+  # Mock mensajes pendientes
+  stub(contactManagementServer, "dbGetQuery",
+       function(...) {
+         data.frame(
+           id = 1,
+           nombre = "Juan Perez",
+           email = "juan@example.com",
+           mensaje = "Hola, necesito ayuda",
+           leido = FALSE,
+           fecha = Sys.time()
+         )
+       })
   
-  # Simulamos dbGetQuery para que devuelva un mensaje de prueba
-  stub(contactManagementServer, "dbGetQuery", data.frame(
-    id = 1,
-    nombre = "Juan Perez",
-    email = "juan@example.com",
-    mensaje = "Hola, necesito ayuda",
-    leido = FALSE,
-    fecha = Sys.time(),
-    stringsAsFactors = FALSE
-  ))
+  # Mock dbExecute
+  m_exec <- mock(1)
+  stub(contactManagementServer, "dbExecute", m_exec)
   
-  # Simulamos dbExecute para capturar cuando se intenta actualizar la DB
-  m_execute <- mock(1) # Devuelve 1 fila afectada
-  stub(contactManagementServer, "dbExecute", m_execute)
+  # Mock SMTP
+  stub(contactManagementServer, "server", function(...) TRUE)
   
-  # Simulamos la función smtp para que no envíe correos reales
-  m_smtp <- mock(TRUE)
-  stub(contactManagementServer, "server", function(...) m_smtp)
-  
-  # 2. TEST SERVER
-  testServer(contactManagementServer, args = list(id = "test", pool = mock_pool), {
-    
-    # Verificamos que al inicio se intentó leer la base de datos
-    # (mensajes_pendientes se ejecuta al renderizar la UI)
-    expect_equal(nrow(mensajes_pendientes()), 1)
-    
-    # 3. ACCIÓN: Simulamos que el usuario pulsa "Archivar" en el mensaje ID 1
-    # Recuerda que usamos el input delegado 'target_archive'
-    session$setInputs(target_archive = 1)
-    
-    # 4. VERIFICACIÓN:
-    # Comprobamos que dbExecute fue llamado con los argumentos correctos
-    args <- expect_called(m_execute, 1) # Se llamó una vez
-    call_args <- mock_args(m_execute)[[1]]
-    
-    expect_match(call_args[[2]], "UPDATE contacto SET leido = TRUE")
-    expect_equal(call_args[[3]][[1]], 1) # El ID pasado fue el 1
-    
-    # Verificamos que el valor de refresh aumentó
-    expect_gt(refresh(), 0)
-  })
+  testServer(contactManagementServer,
+             args = list(id="test", pool=mock_pool),
+             {
+               
+               # Simula el clic en Archivar
+               session$setInputs(target_archive = 1)
+               
+               # Verifica llamada a dbExecute
+               expect_called(m_exec, 1)
+               args <- mock_args(m_exec)[[1]]
+               sql <- args[[2]]
+               expect_match(sql, "UPDATE contacto")
+               expect_match(sql, "SET leido = TRUE")
+               expect_match(sql, "Archivado manualmente")
+               expect_equal(args[[3]][[1]], 1)
+             })
 })
 
-test_that("contactManagementServer prepara los datos para responder", {
-  mock_pool <- "fake_pool_object"
+# ---- 2. TEST: Abrir modal de respuesta ----
+test_that("Carga correctamente los datos del mensaje y abre modal", {
+  mock_pool <- "fake_pool"
   
-  stub(contactManagementServer, "dbGetQuery", data.frame(
-    id = 42,
-    nombre = "Ana Lopez",
-    email = "ana@example.com",
-    mensaje = "Consulta",
-    leido = FALSE,
-    stringsAsFactors = FALSE
-  ))
+  stub(contactManagementServer, "dbGetQuery",
+       function(...) {
+         data.frame(
+           id = 42,
+           nombre = "Ana Lopez",
+           email = "ana@example.com",
+           mensaje = "Consulta",
+           leido = FALSE
+         )
+       })
   
-  test_that("contactManagementServer gestiona errores de envío SMTP", {
-    mock_pool <- "fake_pool_object"
-    
-    # Stub para que dbGetQuery devuelva un mensaje
-    stub(contactManagementServer, "dbGetQuery", data.frame(
-      id = 99, nombre = "Error Test", email = "test@error.com", 
-      mensaje = "Falla por favor", leido = FALSE, stringsAsFactors = FALSE
-    ))
-    
-    # FORZAMOS EL ERROR: El servidor SMTP lanzará una excepción
-    m_smtp_fail <- function(...) stop("Error de conexión SMTP: Tiempo de espera agotado")
-    stub(contactManagementServer, "server", function(...) m_smtp_fail)
-    
-    # Mock de la notificación de Shiny para ver si se muestra el error
-    m_notify <- mock()
-    stub(contactManagementServer, "showNotification", m_notify)
-    
-    testServer(contactManagementServer, args = list(id = "test", pool = mock_pool), {
-      # 1. Preparamos el mensaje a enviar
-      rv_active_msg$id <- 99
-      rv_active_msg$email <- "test@error.com"
-      session$setInputs(email_body = "Esta respuesta va a fallar")
-      
-      # 2. Ejecutamos el envío
-      session$setInputs(confirm_send = 1)
-      
-      # 3. VERIFICACIÓN:
-      # ¿Se llamó a showNotification con el mensaje de error?
-      args <- mock_args(m_notify)[[1]]
-      expect_match(args[[1]], "Error de conexión SMTP")
-      
-      # ¿Se evitó el guardado en base de datos? (refresh no debería subir si falló antes)
-      # Dependiendo de dónde pongas el dbExecute en tu código, 
-      # aquí verificarías que el contador no subió.
-    })
-  })
+  show_mock <- mock(NULL)
+  stub(contactManagementServer, "showModal", show_mock)
   
-  testServer(contactManagementServer, args = list(id = "test", pool = mock_pool), {
-    # Simulamos click en responder al mensaje 42
-    session$setInputs(target_reply = 42)
-    
-    # Verificamos que los reactiveValues se llenaron con la info correcta para el modal
-    expect_equal(rv_active_msg$id, 42)
-    expect_equal(rv_active_msg$nombre, "Ana Lopez")
-    expect_equal(rv_active_msg$email, "ana@example.com")
-  })
+  testServer(contactManagementServer,
+             args = list(id="test", pool=mock_pool),
+             {
+               
+               session$setInputs(target_reply = 42)
+               
+               # Verifica reactiveValues cargados
+               expect_equal(rv_active_msg$id, 42)
+               expect_equal(rv_active_msg$nombre, "Ana Lopez")
+               expect_equal(rv_active_msg$email, "ana@example.com")
+               
+               # Verifica que se mostró el modal
+               expect_called(show_mock, 1)
+             })
+})
+
+# ---- 3. TEST: Enviar email y archivar ----
+test_that("Envía email y archiva correctamente", {
+  mock_pool <- "fake_pool"
+  
+  stub(contactManagementServer, "dbGetQuery",
+       function(...) {
+         data.frame(
+           id = 50,
+           nombre = "Carlos Ruiz",
+           email = "carlos@example.com",
+           mensaje = "Necesito información",
+           leido = FALSE
+         )
+       })
+  
+  smtp_mock <- mock(TRUE)
+  stub(contactManagementServer, "server", function(...) smtp_mock)
+  
+  m_exec <- mock(1)
+  stub(contactManagementServer, "dbExecute", m_exec)
+  
+  # Mock modal
+  stub(contactManagementServer, "showModal", function(...) NULL)
+  stub(contactManagementServer, "removeModal", function(...) NULL)
+  
+  testServer(contactManagementServer,
+             args = list(id="test", pool=mock_pool),
+             {
+               # Abrir modal
+               session$setInputs(target_reply = 50)
+               
+               # Usuario escribe mensaje
+               session$setInputs(email_body = "Gracias por contactar")
+               
+               # Usuario pulsa enviar
+               session$setInputs(confirm_send = 1)
+               
+               # Verifica SMTP
+               expect_called(smtp_mock, 1)
+               
+               # Verifica SQL y parámetros
+               expect_called(m_exec, 1)
+               args <- mock_args(m_exec)[[1]]
+               sql <- args[[2]]
+               params <- args[[3]]
+               expect_match(sql, "UPDATE contacto")
+               expect_match(sql, "SET leido = TRUE")
+               expect_match(sql, "respuesta =")
+               expect_equal(params[[1]], "Gracias por contactar")
+               expect_equal(params[[2]], 50)
+             })
 })

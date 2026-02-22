@@ -2,93 +2,112 @@ userManagementUI <- function(id) {
   ns <- NS(id)
   
   tagList(
-    # 1. Importamos Tailwind CSS y retocamos los inputs de Shiny
+    # 1. Estilos personalizados para mejorar Bootstrap
     tags$head(
-      tags$script(src = "https://cdn.tailwindcss.com"),
       tags$style(HTML("
-        /* Ajustes para que los inputs de Shiny no rompan el diseño */
-        .shiny-input-container { margin-bottom: 0px !important; }
-        .form-control { 
-          border-radius: 0.75rem !important; 
-          border: 1px solid #e5e7eb !important; 
-          padding: 0.75rem 1rem !important;
-          height: auto !important;
-          box-shadow: none !important;
+        .admin-card {
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+          padding: 40px;
+          margin-bottom: 30px;
+          border: 1px solid #f0f0f0;
         }
-        .form-control:focus {
-          border-color: #6d28d9 !important; /* Color morado al enfocar */
-          ring: 2px solid #ddd6fe !important;
+        .form-label {
+          font-weight: 600;
+          color: #4b5563;
+          margin-bottom: 8px;
         }
-        .selectize-input { 
-          border-radius: 0.75rem !important; 
-          padding: 0.75rem 1rem !important; 
-          border: 1px solid #e5e7eb !important;
+        /* Hacemos los inputs más grandes y estilizados */
+        .form-control, .selectize-input {
+          padding: 12px 15px !important;
+          border-radius: 12px !important;
+          border: 1px solid #d1d5db !important;
+          font-size: 16px !important;
+        }
+        .btn-register {
+          background-color: #6d28d9;
+          color: white;
+          padding: 12px 30px;
+          border-radius: 12px;
+          font-weight: bold;
+          border: none;
+          transition: all 0.3s;
+        }
+        .btn-register:hover {
+          background-color: #5b21b6;
+          transform: translateY(-2px);
+          color: white;
         }
       "))
     ),
     
-    # 2. El Contenedor Principal
+    # 2. Contenedor Principal usando Grid de Bootstrap
     div(
-      class = "min-h-screen bg-gray-50 py-12 px-4", # Fondo gris clarito para que resalte el blanco
+      class = "container-fluid bg-light py-5", 
       div(
-        class = "max-w-2xl mx-auto bg-white p-10 rounded-3xl shadow-xl border border-gray-100",
+        class = "container",
         
-        # Encabezado con un icono o detalle visual
+        # --- SECCIÓN A: ALTA DE USUARIOS (Formulario Grande) ---
         div(
-          class = "mb-8",
-          span(class = "bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider", "Administración"),
-          h3(class = "text-3xl font-extrabold text-gray-800 mt-2", "Alta de Usuario"),
-          p(class = "text-gray-500", "Completa los datos para registrar personal o pacientes.")
-        ),
-        
-        # Grid del Formulario
-        div(
-          class = "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5",
+          class = "admin-card mx-auto",
+          style = "max-width: 900px;",
           
-          div(
-            class = "col-span-2 md:col-span-1",
-            tags$label("Nombre y Apellidos", class = "block text-sm font-semibold text-gray-700 mb-1"),
-            textInput(ns("nombre"), NULL, placeholder = "Ej. Juan Pérez", width = "100%")
+          div(class = "mb-4",
+              span(class = "badge rounded-pill bg-primary mb-2", "ADMINISTRACIÓN"),
+              h2(class = "fw-bold text-dark", "Alta de Nuevo Usuario"),
+              p(class = "text-muted", "Gestión de credenciales para personal clínico y pacientes.")
           ),
           
-          div(
-            class = "col-span-2 md:col-span-1",
-            tags$label("Correo Electrónico", class = "block text-sm font-semibold text-gray-700 mb-1"),
-            textInput(ns("email"), NULL, placeholder = "correo@ejemplo.com", width = "100%")
+          # Fila 1: Nombre y Email
+          div(class = "row g-4 mb-3",
+              div(class = "col-md-6",
+                  tags$label("Nombre y Apellidos", class = "form-label"),
+                  textInput(ns("nombre"), NULL, placeholder = "Ej. Juan Pérez", width = "100%")
+              ),
+              div(class = "col-md-6",
+                  tags$label("Correo Electrónico", class = "form-label"),
+                  textInput(ns("email"), NULL, placeholder = "correo@ejemplo.com", width = "100%")
+              )
           ),
           
-          div(
-            class = "col-span-2 md:col-span-1",
-            tags$label("Usuario de acceso", class = "block text-sm font-semibold text-gray-700 mb-1"),
-            textInput(ns("usuario"), NULL, placeholder = "usuario123", width = "100%")
+          # Fila 2: Usuario. teléfono y Password
+          div(class = "row g-4 mb-3",
+              div(class = "col-md-6",
+                  tags$label("Nombre de Usuario", class = "form-label"),
+                  textInput(ns("usuario"), NULL, placeholder = "usuario123", width = "100%")
+              ),
+              div(class = "col-md-4",
+                  tags$label("Teléfono", class = "form-label"),
+                  textInput(ns("telefono"), NULL, placeholder = "600000000", width = "100%")
+              ),
+              div(class = "col-md-6",
+                  tags$label("Contraseña Temporal", class = "form-label"),
+                  passwordInput(ns("password"), NULL, placeholder = "••••••••", width = "100%")
+              )
           ),
           
-          div(
-            class = "col-span-2 md:col-span-1",
-            tags$label("Contraseña Temporal", class = "block text-sm font-semibold text-gray-700 mb-1"),
-            passwordInput(ns("password"), NULL, placeholder = "••••••••", width = "100%")
+          # Fila 3: Rol
+          div(class = "row mb-4",
+              div(class = "col-12",
+                  tags$label("Rol asignado en el sistema", class = "form-label"),
+                  selectInput(ns("tipo_usuario"), NULL, 
+                              choices = c("Paciente" = "paciente", 
+                                          "Recepción" = "recepcion", 
+                                          "Doctor/Personal Clínico" = "doctor"), 
+                              width = "100%")
+              )
           ),
           
-          div(
-            class = "col-span-2",
-            tags$label("Rol en el sistema", class = "block text-sm font-semibold text-gray-700 mb-1"),
-            selectInput(ns("tipo_usuario"), NULL, 
-                        choices = c("Paciente" = "paciente", 
-                                    "Recepción" = "recepcion", 
-                                    "Doctor/Personal Clínico" = "doctor"), 
-                        width = "100%")
+          # Botón
+          div(class = "d-flex justify-content-end border-top pt-4",
+              actionButton(ns("btn_save_user"), "Registrar Usuario", class = "btn-register")
           )
         ),
         
-        # Botón de Acción
-        div(
-          class = "mt-10 pt-6 border-t border-gray-100 flex justify-end",
-          actionButton(
-            ns("btn_save_user"),
-            "Registrar en el Sistema",
-            class = "bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 transition-all active:scale-95"
-          )
-        )
+        # --- SECCIÓN B: PANEL DE BANNEO (Dinámico) ---
+        # Este UI se genera en el server solo si el usuario es Admin
+        uiOutput(ns("admin_panel_ui"))
       )
     )
   )

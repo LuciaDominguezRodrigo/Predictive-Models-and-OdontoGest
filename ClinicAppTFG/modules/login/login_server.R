@@ -6,9 +6,20 @@ library(bcrypt)
 loginServer <- function(id, pool, user_logged, current_user, show_view, update_url) { 
   moduleServer(id, function(input, output, session){
     
+    # 1. Creamos una variable reactiva para el mensaje
+    mensaje_error <- reactiveVal("")
+    
+    # 2. El output siempre está "escuchando" a esa variable
+    output$login_msg <- renderText({
+      mensaje_error()
+    })
+    
     # --- Lógica de Login ---
     observeEvent(input$btn_login, {
       req(input$usuario, input$contraseña)
+      
+      # Limpiamos mensaje anterior al intentar loguear
+      mensaje_error("")
       
       usuario_input     <- input$usuario
       contraseña_input  <- input$contraseña
@@ -20,10 +31,16 @@ loginServer <- function(id, pool, user_logged, current_user, show_view, update_u
       }, error=function(e) NULL)
       
       if (!is.null(res) && nrow(res) == 1 && checkpw(contraseña_input, res$password_hash)) {
-        current_user(res)
-        user_logged(TRUE)
+        if (!is.null(res$banneado) && res$banneado[1] == 1) {
+          current_user(res)
+          user_logged(TRUE)
+        } else if (!is.null(res$banneado) && res$banneado[1] == 0) {
+          # CORRECTO: Actualizamos el valor reactivo
+          mensaje_error("❌ Usuario baneado. Contacte con administración")
+        }
       } else {
-        output$login_msg <- renderText("❌ Usuario o contraseña incorrectos")
+        # CORRECTO: Actualizamos el valor reactivo
+        mensaje_error("❌ Usuario o contraseña incorrectos")
         shinyjs::runjs(sprintf("document.getElementById('%s').value = '';", session$ns("contraseña")))
       }
     })

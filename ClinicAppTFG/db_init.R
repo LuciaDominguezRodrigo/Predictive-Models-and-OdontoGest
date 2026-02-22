@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email VARCHAR(100),
   telefono VARCHAR(20),
   tipo_usuario ENUM('admin','recepcion','doctor','paciente') DEFAULT 'paciente',
+  banneado INT DEFAULT 1, -- 1 = Activo, 0 = Baneado
   reset_token VARCHAR(255) NULL,
   token_expiry DATETIME NULL
 ) DEFAULT CHARSET = utf8mb4;
@@ -96,7 +97,7 @@ CREATE TABLE IF NOT EXISTS contacto (
 insert_user <- function(usuario, nombre, pass_plain, email="", telefono="", tipo="paciente"){
   pass_hash <- hashpw(pass_plain)
   dbExecute(pool,
-            "INSERT INTO usuarios (usuario,nombre,password_hash,email,telefono,tipo_usuario) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO usuarios (usuario,nombre,password_hash,email,telefono,tipo_usuario, banneado) VALUES (?,?,?,?,?,?,1)",
             params=list(usuario, nombre, pass_hash, email, telefono, tipo)
   )
   cat("Usuario creado: ", usuario, "\n")
