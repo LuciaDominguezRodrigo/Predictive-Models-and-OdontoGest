@@ -7,11 +7,13 @@
 # Librerías
 # -----------------------------
 library(shiny)
+
 library(DBI)
 library(pool)
 library(bcrypt)
 library(shinyjs)
 library(jsonlite)
+library(bslib)
 
 
 # -----------------------------
@@ -52,6 +54,7 @@ source("modules/contact_management/contact_management_server.R")
 # UI principal
 # -----------------------------
 ui <- fluidPage(
+  theme = bs_theme(version = 5, bootswatch = "flatly"),
   style = "padding: 0px; margin: 0px;", 
   useShinyjs(),
   tags$head(
@@ -95,16 +98,29 @@ server <- function(input, output, session) {
   })
   
   # 2. Rehidratación de sesión
+  # 2. Rehidratación de sesión mejorada
   observeEvent(input$recovered_user, {
-    req(input$recovered_user)
+    # Si es NULL o el texto "null", nos aseguramos de que no haya login
+    if (is.null(input$recovered_user) || input$recovered_user == "null") {
+      user_logged(FALSE)
+      current_user(NULL)
+      return()
+    }
+    
     try({
       user <- jsonlite::fromJSON(input$recovered_user)
-      current_user(user)
-      user_logged(TRUE)
-      update_url("dashboard")
+      # Validamos que el objeto tenga estructura (ej: campo id o usuario)
+      if (!is.null(user$usuario)) {
+        current_user(user)
+        user_logged(TRUE)
+        # Si estamos en la landing pero hay sesión, mandamos al dashboard
+        if(show_view() == "LANDING" || show_view() == "LOGIN") {
+          show_view("MAIN") # O como se llame tu vista de dashboard
+          update_url("dashboard")
+        }
+      }
     }, silent = TRUE)
   })
-  
   # 3. Historial (atrás/adelante)
   observeEvent(input$url_changed, {
     query <- parseQueryString(input$url_changed)
@@ -135,12 +151,17 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   # 5. Logout
+  # 5. Logout (app.R)
   observeEvent(input$`main-btn_logout`, {
-    session$sendCustomMessage("clear_user", NULL)
-    current_user(NULL)
+    # 1. Limpiar R primero
     user_logged(FALSE)
+    current_user(NULL)
+    
+    # 2. Limpiar JS (esto borrará el sessionStorage)
+    session$sendCustomMessage("clear_user", "home")
+    
+    # 3. Actualizar UI
     show_view("LANDING")
-    update_url("home")
   })
   
   # 6. Render UI
@@ -171,13 +192,8 @@ server <- function(input, output, session) {
   mainServer("main", current_user, user_logged, pool)
   resetPasswordServer("resetpass", pool, show_view, update_url)
   resetConfirmServer("resetconfirm", pool, show_view, update_url)
+  userManagementServer("create_user_mod", pool, current_user)
   
-  # 8. Cierre BD
-  session$onSessionEnded(function() {
-    try({
-      if (exists("pool")) poolClose(pool)
-    }, silent = TRUE)
-  })
 }
 
 # Lanzar App

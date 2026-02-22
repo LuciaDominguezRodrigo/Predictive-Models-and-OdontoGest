@@ -51,7 +51,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
     })
     
     # Servidores de módulos
-    userManagementServer("create_user_mod", pool)
+    userManagementServer("create_user_mod", pool, current_user)
     contactManagementServer("contact_mod", pool)
     observeEvent(input$btn_logout,{
       user_logged(FALSE)

@@ -9,6 +9,7 @@ landingServer <- function(id, show_view, pool) { # <--- Añadido 'pool'
     
     # Lógica del Formulario
     observeEvent(input$send_contact, {
+      req(pool)
       # Validaciones simples
       if(input$contact_name == "" || input$contact_email == "" || input$contact_msg == "") {
         showNotification("Por favor, rellena todos los campos.", type = "warning")

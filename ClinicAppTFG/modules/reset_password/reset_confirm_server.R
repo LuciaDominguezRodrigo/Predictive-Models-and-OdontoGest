@@ -20,10 +20,12 @@ resetConfirmServer <- function(id, pool, show_view, update_url, token_manual = N
     
     # Validación del token
     observeEvent(current_token(), {
+      req(pool)
       token <- current_token()
       req(token)
       
       res <- tryCatch({
+        
         dbGetQuery(pool, 
                    "SELECT id AS id_usuario, usuario, reset_token, token_expiry 
                     FROM usuarios WHERE reset_token = ?", 
@@ -76,6 +78,7 @@ resetConfirmServer <- function(id, pool, show_view, update_url, token_manual = N
     
     # Guardar contraseña
     observeEvent(input$btn_set_pass, {
+      req(pool)
       req(input$new_pass1, input$new_pass2)
       
       if (input$new_pass1 != input$new_pass2) {
