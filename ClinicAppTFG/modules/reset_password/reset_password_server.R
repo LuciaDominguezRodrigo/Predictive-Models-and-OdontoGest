@@ -4,7 +4,6 @@
 MI_PASS_APP <- "qffj vlrz kmzq jpwz" 
 MI_CORREO <- "clinicapptfg@gmail.com"
 SMTP_HOST <- "smtp.gmail.com"
-# Puerto 465 SSL. Si falla, probar 587 con ssl=FALSE y tls=TRUE.
 SMTP_PORT <- 465 
 
 # Función auxiliar para generar un token seguro
@@ -16,8 +15,6 @@ generar_token_seguro <- function() {
 
 # Función de envío de Correo
 enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_restablecimiento) {
-  
-  # Configuración Localhost 
   PUERTO_LOCAL <- "3841" 
   URL_BASE_APP <- paste0("http://127.0.0.1:", PUERTO_LOCAL) 
   
@@ -35,7 +32,7 @@ enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_r
   )
   
   tryCatch({
-    send.mail(
+    mailR::send.mail(
       from = MI_CORREO,
       to = destinatario,
       subject = "Solicitud de Restablecimiento de Contraseña para ClinicAppTFG",
@@ -46,8 +43,7 @@ enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_r
         port = SMTP_PORT,
         user.name = MI_CORREO,
         passwd = MI_PASS_APP, 
-        ssl = TRUE,
-        tls = FALSE # Normalmente no es necesario si ssl=TRUE
+        ssl = TRUE
       ),
       authenticate = TRUE,
       send = TRUE
@@ -59,95 +55,90 @@ enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_r
   })
 }
 
-
-# SERVIDOR DEL MÓDULO (Lógica de solicitud de correo)
-resetPasswordServer <- function(id, pool, show_view,  update_url) {
-  moduleServer(id, function(input, output, session){
+# SERVIDOR DEL MÓDULO
+resetPasswordServer <- function(id, pool, show_view, update_url) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     
     observeEvent(input$btn_reset, {
       req(pool)
       req(input$usuario_reset)
+      
+      # 1. UI: Bloquear botón y mostrar spinner
+      shinyjs::disable("btn_reset")
+      shinyjs::html("btn_label", '<div class="loading-spinner"></div> Enviando...')
+      output$reset_msg_ui <- renderUI({ NULL }) # Limpiar mensajes previos
+      
       usuario_input <- input$usuario_reset
       
-      # 1. Buscar usuario
+      # 2. Buscar usuario
       res <- tryCatch({
         dbGetQuery(pool,
                    "SELECT id, email, nombre 
-              FROM usuarios 
-              WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)",
+                    FROM usuarios 
+                    WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)",
                    params = list(usuario_input, usuario_input))
       }, error = function(e) {
-        print(paste("Error en DB:", e$message)) 
+        print(paste("Error en DB Query:", e$message)) 
         return(NULL)
       })
       
-      # --- INICIO DE LÍNEAS DE DEPURACIÓN TEMPORAL ---
-      print("--- Resultado de la consulta de usuario ---")
+      # Depuración en consola
+      print("--- Intento de recuperación ---")
       print(res)
-      print("---------------------------------------------")
-      # --- FIN DE LÍNEAS DE DEPURACIÓN TEMPORAL ---
       
-      # 2. Si el usuario existe, procesar
+      # 3. Procesar si el usuario existe
       if (!is.null(res) && nrow(res) == 1) {
         user_info <- res[1, ]
-        
         token <- generar_token_seguro()
-        # 30 minutos de validez
         expiracion <- as.POSIXct(Sys.time() + 30 * 60, tz = "UTC") 
         
-        # 3. Guardar Token y Expiración en la DB
+        # Guardar Token en DB
         update_result <- tryCatch({
           dbExecute(pool,
-                    # Usamos 'id' en el WHERE
                     "UPDATE usuarios SET reset_token = ?, token_expiry = ? WHERE id = ?",
                     params = list(
                       token, 
                       format(expiracion, "%Y-%m-%d %H:%M:%S"), 
-                      #  Usamos 'id' y forzamos longitud 1 con [[1]]
                       user_info$id[[1]] 
-                    )
-          )
+                    ))
         }, error = function(e) {
-          message("Error al actualizar token en DB: ", e$message)
+          print(paste("Error al actualizar token:", e$message))
           0
         })
         
-        # 4. Enviar Correo si la DB se actualizó
+        # Enviar Correo si la DB se actualizó correctamente
         if (update_result == 1) {
           envio_exitoso <- enviar_correo_restablecimiento(
-            destinatario = user_info$email, # Usar 'email' de la DB
+            destinatario = user_info$email,
             nombre_usuario = user_info$nombre,
             token_restablecimiento = token
           )
-          
-          if (envio_exitoso) {
-            output$reset_msg <- renderText({
-              paste0("✅ Se ha enviado un correo de recuperación a ", user_info$email, ". Revisa tu bandeja de entrada.")
-            })
-          } else {
-            output$reset_msg <- renderText("⚠️ Error al enviar el correo. Contacta al soporte técnico.")
-          }
-          
-        } else {
-          output$reset_msg <- renderText("❌ Error interno. Inténtalo de nuevo.")
+          if(envio_exitoso) print("Correo enviado con éxito") else print("Fallo en el envío del correo")
         }
-        
-      } else {
-        # Mensaje genérico para evitar revelar si el usuario existe o no
-        output$reset_msg <- renderText("✅ Si el usuario existe, recibirás un correo de recuperación en breve.") 
       }
+      
+      # 4. Respuesta visual final (Siempre positiva por seguridad)
+      output$reset_msg_ui <- renderUI({
+        div(
+          style = "padding: 15px; border-radius: 12px; background-color: #f0fdf4; 
+                   border: 1px solid #bbf7d0; color: #166534; font-weight: 500; 
+                   text-align: center; margin-top: 20px; animation: fadeIn 0.8s;",
+          "Si los datos coinciden con una cuenta activa, recibirás un correo de recuperación en breve."
+        )
+      })
+      
+      # 5. Restaurar UI
+      shinyjs::enable("btn_reset")
+      shinyjs::html("btn_label", "Enviar enlace")
+      updateTextInput(session, "usuario_reset", value = "")
     })
     
+    # Navegación volver
     observeEvent(input$back_login, {
-      # Limpiamos la query de la URL
       updateQueryString("?page=login", mode = "push", session = session)
-      
-      # Cambiamos el estado a LOGIN (el string exacto que espera app.R)
       show_view("LOGIN") 
-      
-      # Actualizamos el historial del navegador si es necesario
       update_url("login")
     })
-    
   })
 }
