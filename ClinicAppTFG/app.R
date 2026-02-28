@@ -32,6 +32,7 @@ source("modules/login/login_server.R")
 
 #index
 source("modules/index/main_ui_module.R")
+source("modules/index/main_server_module.R")
 
 #reset password: reset password form y envio de correo/reseteo de contraseña
 source("modules/reset_password/reset_password_ui.R")
@@ -50,22 +51,28 @@ source("modules/public/public_landing_server.R")
 #gestión de respuesta al formulario de la web
 source("modules/contact_management/contact_management_UI.R")
 source("modules/contact_management/contact_management_server.R")
+
+source("modules/profile/profile_UI.R")
+source("modules/profile/profile_server.R")
 # -----------------------------
 # UI principal
 # -----------------------------
 ui <- fluidPage(
-  theme = bs_theme(version = 5, bootswatch = "flatly"),
+  theme = bs_theme(version = 5),
   style = "padding: 0px; margin: 0px;", 
   useShinyjs(),
   tags$head(
     tags$script(src = "script.js")
   ),  
   
-  uiOutput("ui_landing"),
-  uiOutput("ui_login"),
-  uiOutput("ui_reset"),
-  uiOutput("ui_reset_confirm"),
-  uiOutput("ui_main")
+  # ENVOLVEMOS TODO EN UN DIV ÚNICO
+  div(id = "main-app-container",
+      uiOutput("ui_landing"),
+      uiOutput("ui_login"),
+      uiOutput("ui_reset"),
+      uiOutput("ui_reset_confirm"),
+      uiOutput("ui_main")
+  )
 )
 
 # -----------------------------

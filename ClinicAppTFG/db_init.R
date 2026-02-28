@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   tipo_usuario ENUM('admin','recepcion','doctor','paciente') DEFAULT 'paciente',
   banneado INT DEFAULT 1, -- 1 = Activo, 0 = Baneado
   reset_token VARCHAR(255) NULL,
-  token_expiry DATETIME NULL
+  token_expiry DATETIME NULL, 
+  foto_blob LONGBLOB NULL
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
@@ -94,14 +95,26 @@ CREATE TABLE IF NOT EXISTS contacto (
 # -----------------------------
 #  Funciones para insertar datos iniciales
 # -----------------------------
-insert_user <- function(usuario, nombre, pass_plain, email="", telefono="", tipo="paciente"){
+insert_user <- function(usuario, nombre, pass_plain, email="", telefono="", tipo="paciente", foto_nombre_archivo = "default_user.png"){
   pass_hash <- hashpw(pass_plain)
+  
+  # Construimos la ruta completa al archivo
+  ruta_foto <- file.path("www", "img", foto_nombre_archivo)
+  
+  # Leer el archivo como binario (raw)
+  foto_blob <- NULL
+  if (file.exists(ruta_foto)) {
+    foto_blob <- readBin(ruta_foto, "raw", file.info(ruta_foto)$size)
+  }
+  
   dbExecute(pool,
-            "INSERT INTO usuarios (usuario,nombre,password_hash,email,telefono,tipo_usuario, banneado) VALUES (?,?,?,?,?,?,1)",
-            params=list(usuario, nombre, pass_hash, email, telefono, tipo)
+            "INSERT INTO usuarios (usuario, nombre, password_hash, email, telefono, tipo_usuario, banneado, foto_blob) 
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
+            params = list(usuario, nombre, pass_hash, email, telefono, tipo, list(foto_blob))
   )
-  cat("Usuario creado: ", usuario, "\n")
+  cat("Usuario creado con BLOB: ", usuario, " (Imagen: ", foto_nombre_archivo, ")\n")
 }
+
 
 insert_paciente <- function(nombre, email="", telefono="", fecha_nacimiento=NA){
   dbExecute(pool, "INSERT INTO pacientes (nombre,email,telefono,fecha_nacimiento) VALUES (?,?,?,?)",
@@ -125,10 +138,22 @@ insert_contacto <- function(nombre, email, mensaje){
 #  Insertar datos iniciales (solo si RESET_DB = TRUE)
 # -----------------------------
 if (RESET_DB) {
-  insert_user("admin", "Administrador", "1234", "lucia.dominguez.rodrigo@gmail.com", "123456789", "admin")
-  insert_user("recepcion1", "Recepcionista", "abcd", "recepcion@clinica.com", "987654321", "recepcion")
-  insert_user("doctor1", "Dr. Pérez", "medico1", "drperez@clinica.com", "555123456", "doctor")
+  # Administrador con su foto específica
+  insert_user("admin", "Administrador", "1234", "lucia.dominguez.rodrigo@gmail.com", 
+              "123456789", "admin", foto_nombre_archivo = "default_admin.png")
   
+  # Recepcionista con su foto
+  insert_user("recepcion1", "Recepcionista", "abcd", "recepcion@clinica.com", 
+              "987654321", "recepcion", foto_nombre_archivo = "default_secretary.png")
+  
+  # Doctor con su foto
+  insert_user("doctor1", "Dr. Pérez", "medico1", "drperez@clinica.com", 
+              "555123456", "doctor", foto_nombre_archivo = "default_doctor.png")
+  
+  # Usuario genérico (usará default_user.png por defecto según la función)
+  insert_user("paciente1", "Juan Sin Foto", "1234", "juan@correo.com", "000000000", "paciente")
+  
+  message("Base de datos inicializada con éxito y fotos BLOB cargadas.")
   insert_paciente("Juan Pérez", "juan@correo.com", "600111222", "1985-04-12")
   insert_paciente("María López", "maria@correo.com", "600333444", "1990-09-05")
   
