@@ -27,53 +27,49 @@ dbExecute  <- function(...) NULL
 describe("Módulo de Restablecimiento de Contraseña", {
   
   # --- Caso 1: Flujo Exitoso Completo ---
+  # --- Caso 1: Flujo Exitoso Completo ---
   test_that("Caso de Éxito: Usuario encontrado y correo enviado", {
     pool_mock <- "Pool_Simulado" 
     show_view_mock <- mock()
     
-    # Mock: Datos simulados de respuesta de la base de datos
-    res_db <- data.frame(
-      id = 1, 
-      email = "alumno@tfg.com", 
-      nombre = "Usuario TFG", 
-      stringsAsFactors = FALSE
-    )
+    res_db <- data.frame(id = 1, email = "alumno@tfg.com", nombre = "Usuario TFG", stringsAsFactors = FALSE)
     
     m_query   <- mock(res_db)
-    m_execute <- mock(1)    # Simula 1 fila actualizada correctamente
-    m_correo  <- mock(TRUE) # Simula envío de correo exitoso
+    m_execute <- mock(1)    
+    m_correo  <- mock(TRUE) 
     
-    # Inyección de dependencias (Stubs)
     stub(resetPasswordServer, "dbGetQuery", m_query)
     stub(resetPasswordServer, "dbExecute", m_execute)
     stub(resetPasswordServer, "enviar_correo_restablecimiento", m_correo)
     
-    testServer(resetPasswordServer, args = list(pool = pool_mock, show_view = show_view_mock), {
-      # Acción: El usuario solicita recuperación
+    testServer(resetPasswordServer, args = list(pool = pool_mock, show_view = show_view_mock, update_url = mock()), {
       session$setInputs(usuario_reset = "alumno@tfg.com")
       session$setInputs(btn_reset = 1)
       
-      # Verificaciones (Assertions)
+      # IMPORTANTE: El nombre debe ser reset_msg_ui
+      # Y el texto debe coincidir con lo que renderiza el servidor
+      expect_match(output$reset_msg_ui$html, "recibirás un correo de recuperación")
+      
       expect_called(m_query, 1)
       expect_called(m_execute, 1)
       expect_called(m_correo, 1)
-      expect_match(output$reset_msg, "Se ha enviado un correo")
     })
   })
   
   # --- Caso 2: Seguridad (Usuario inexistente) ---
+  # --- Caso 2: Seguridad ---
   test_that("Seguridad: El sistema no revela si el usuario existe o no", {
     pool_mock <- "Pool_Simulado"
-    m_query_empty <- mock(data.frame()) # Simula que no hay coincidencias
+    m_query_empty <- mock(data.frame()) 
     
     stub(resetPasswordServer, "dbGetQuery", m_query_empty)
     
-    testServer(resetPasswordServer, args = list(pool = pool_mock, show_view = mock()), {
+    testServer(resetPasswordServer, args = list(pool = pool_mock, show_view = mock(), update_url = mock()), {
       session$setInputs(usuario_reset = "no_existo@test.com")
       session$setInputs(btn_reset = 1)
       
-      # Aunque el usuario no existe, el mensaje debe ser positivo/genérico por seguridad
-      expect_match(output$reset_msg, "Si el usuario existe, recibirás un correo")
+      # Debe usar reset_msg_ui
+      expect_match(output$reset_msg_ui$html, "recibirás un correo de recuperación")
       expect_called(m_query_empty, 1)
     })
   })
@@ -84,23 +80,22 @@ describe("Módulo de Restablecimiento de Contraseña", {
     res_db <- data.frame(id = 1, email = "a@b.com", nombre = "User", stringsAsFactors = FALSE)
     
     m_query   <- mock(res_db)
-    m_execute_fail <- mock(0) # Simula que la DB no pudo guardar el token (0 filas)
+    m_execute_fail <- mock(0) 
     m_correo  <- mock(TRUE)
     
     stub(resetPasswordServer, "dbGetQuery", m_query)
     stub(resetPasswordServer, "dbExecute", m_execute_fail)
     stub(resetPasswordServer, "enviar_correo_restablecimiento", m_correo)
     
-    testServer(resetPasswordServer, args = list(pool = pool_mock, show_view = mock()), {
+    testServer(resetPasswordServer, args = list(pool = pool_mock, show_view = mock(), update_url = mock()), {
       session$setInputs(usuario_reset = "a@b.com")
       session$setInputs(btn_reset = 1)
       
-      # Verificación: Si no se guardó el token, NO se debe enviar el correo
-      expect_called(m_correo, 0)
-      expect_match(output$reset_msg, "Error interno")
+      expect_called(m_correo, 0) # No se envía correo si falla el UPDATE
+      # El mensaje sigue siendo el genérico por seguridad
+      expect_match(output$reset_msg_ui$html, "recibirás un correo")
     })
   })
-  
   # --- Caso 4: Navegación ---
   test_that("Navegación: El botón de volver regresa al Login", {
     show_view_mock <- mock()

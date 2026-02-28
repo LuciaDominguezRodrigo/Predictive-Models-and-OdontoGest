@@ -59,46 +59,85 @@ contactManagementServer <- function(id, pool, .test_refresh = FALSE) {
       
       tagList(lapply(seq_len(nrow(df)), function(i) {
         msg <- df[i, ]
+        
         div(
-          class = "card mb-4 shadow-sm border-0 border-start border-5 border-primary",
+          class = "card mb-4 shadow-sm border-0 rounded-4",
+          style = "
+        border-left: 6px solid #7e22ce;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      ",
+          
           div(
             class = "card-body p-4",
+            
+            # Header del mensaje
             div(
               class = "d-flex justify-content-between align-items-start mb-3",
+              
               div(
-                h4(class = "fw-bold text-dark mb-0", msg$nombre),
-                span(class = "text-primary fw-bold small", msg$email)
+                h4(class = 'fw-bold text-dark mb-0', msg$nombre),
+                span(class = 'text-primary fw-bold small', msg$email)
               ),
-              span(class = "badge rounded-pill bg-primary px-3", "NUEVO")
+              
+              # Badge NUEVO en estilo morado moderno
+              span(
+                class = "badge px-3 py-2",
+                style = "
+              background: linear-gradient(135deg, #7e22ce, #6b21a8);
+              color: white;
+              font-weight: 600;
+              border-radius: 12px;
+              letter-spacing: .5px;
+            ",
+                "NUEVO"
+              )
             ),
+            
+            # Menaje
             div(
               class = "p-3 bg-light rounded-3 border mb-3 text-secondary fst-italic",
-              paste0("\"", msg$mensaje, "\"")
+              paste0('"', msg$mensaje, '"')
             ),
+            
+            # Botones morados
             div(
               class = "d-flex gap-2",
+              
+              # Botón responder
               actionButton(
                 ns(paste0("btn_rep_", msg$id)), "Responder",
                 onclick = sprintf(
                   "Shiny.setInputValue('%s', %d, {priority:'event'})",
                   ns("target_reply"), msg$id
                 ),
-                class = "btn btn-primary flex-grow-1 fw-bold py-2"
+                class = "btn text-white fw-bold py-2 flex-grow-1",
+                style = "
+              background-color: #7e22ce;
+              border: none;
+              border-radius: 10px;
+            "
               ),
+              
+              # Botón archivar
               actionButton(
                 ns(paste0("btn_arc_", msg$id)), "Archivar",
                 onclick = sprintf(
-                  "Shiny.setInputValue('%s', %d, {priority:'event'})",
+                  'Shiny.setInputValue("%s", %d, {priority:"event"})',
                   ns("target_archive"), msg$id
                 ),
-                class = "btn btn-outline-secondary py-2"
+                class = "btn fw-bold py-2",
+                style = "
+              color: #6b21a8;
+              border: 2px solid #c084fc;
+              border-radius: 10px;
+              background-color: white;
+            "
               )
             )
           )
         )
       }))
-    })
-    
+    })    
     # --- 4. UI HISTORIAL ---
     output$mensajes_archivados <- renderUI({
       df <- mensajes_historial()

@@ -1,8 +1,25 @@
 resetPasswordUI <- function(id) {
   ns <- NS(id)
   tagList(
+    # Necesario para habilitar/deshabilitar el botón
+    shinyjs::useShinyjs(),
+    tags$head(
+      tags$style(HTML("
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-spinner {
+          display: inline-block;
+          width: 18px; height: 18px;
+          border: 3px solid rgba(255,255,255,.3);
+          border-radius: 50%;
+          border-top-color: #fff;
+          vertical-align: middle;
+          margin-right: 8px;
+          animation: spin 1s ease-in-out infinite;
+        }
+      "))
+    ),
     div(
-      # Contenedor centrado consistente con los otros módulos
       style = "min-height: 100vh; display: flex; align-items: center; justify-content: center; 
                background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 20px;",
       
@@ -15,7 +32,6 @@ resetPasswordUI <- function(id) {
           class = "panel-body",
           style = "padding: 50px;",
           
-          # Título y subtítulo
           div(
             class = "text-center",
             style = "margin-bottom: 40px;",
@@ -23,7 +39,6 @@ resetPasswordUI <- function(id) {
             p(style = "color: #64748b; font-size: 1.1rem;", "Escribe tu correo para restablecer tu cuenta")
           ),
           
-          # Campo Usuario/Email
           div(
             class = "form-group",
             style = "margin-bottom: 30px;",
@@ -38,16 +53,15 @@ resetPasswordUI <- function(id) {
             )
           ),
           
-          # Botón Enviar
+          # Botón con ID interno para el texto (para el spinner)
           actionButton(
             ns("btn_reset"),
-            "Enviar enlace",
+            span(id = ns("btn_label"), "Enviar enlace"),
             class = "btn btn-primary btn-block",
             style = "background-color: #6a0dad; border: none; height: 55px; border-radius: 15px; 
                      font-size: 1.2rem; font-weight: 700; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(106, 13, 173, 0.2);"
           ),
           
-          # Enlace para volver
           div(
             class = "text-center",
             style = "margin-top: 30px;",
@@ -58,7 +72,7 @@ resetPasswordUI <- function(id) {
             )
           ),
           
-          # Contenedor de mensaje de éxito/error
+          # Aquí se renderizará el mensaje estético
           div(
             style = "margin-top: 20px;",
             uiOutput(ns("reset_msg_ui"))
