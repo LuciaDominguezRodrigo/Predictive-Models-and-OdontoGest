@@ -1,0 +1,69 @@
+:root {
+  --purple-corp: #6f42c1;
+  --purple-light: #f8f0ff;
+  --purple-hover: #59359a;
+  --nav-height: 0px; /* Ya no necesitamos compensar espacio */
+}
+
+/* Navbar estática */
+.navbar-custom {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.8rem 1rem;
+  position: relative; /* Cambiado de fixed a relative */
+  width: 100%;
+  z-index: 1050;
+}
+
+/* Eliminamos las clases de animación de scroll que ya no se usan */
+
+.content-wrapper {
+  margin-top: 20px; /* Un margen simple para separar del navbar */
+}
+
+.text-purple {
+  color: var(--purple-corp) !important;
+}
+
+.nav-custom-link {
+  color: #6c757d !important;
+  font-weight: 500;
+  padding: 0.5rem 1.2rem !important;
+  margin: 0 4px;
+  border-radius: 50px;
+  text-decoration: none !important;
+  transition: all 0.3s ease;
+}
+
+.nav-custom-link:hover {
+  background-color: var(--purple-light);
+  color: var(--purple-corp) !important;
+}
+
+.bg-purple-active {
+  background-color: var(--purple-corp) !important;
+  color: white !important;
+  box-shadow: 0 4px 6px rgba(111, 66, 193, 0.2);
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(111, 66, 193, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+
+.tab-pane-effect {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 991.98px) {
+  .nav-custom-link {
+    margin: 5px 0;
+    width: 100%;
+    display: block;
+  }
+}

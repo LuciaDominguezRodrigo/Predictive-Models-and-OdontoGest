@@ -1,9 +1,10 @@
+library(base64enc)
+
 userManagementServer <- function(id, pool, user_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     # --- 1. LÓGICA DE PROTECCIÓN Y RENDERIZADO DE TABLA ---
-  
     output$admin_panel_ui <- renderUI({
       req(user_session())
       if (user_session()$tipo_usuario != "admin") return(NULL)
@@ -21,14 +22,22 @@ userManagementServer <- function(id, pool, user_session) {
       )
     })
     
-    # --- 2. LISTADO DE USUARIOS (REACTIVO) ---
+    # --- 2. LISTADO DE USUARIOS (REACTIVO CON FOTO_BLOB) ---
+    # --- 2. LISTADO DE USUARIOS (REACTIVO CON DETECCIÓN DE CAMBIOS EN FOTO) ---
     usuarios_df <- reactivePoll(3000, session,
                                 checkFunc = function() {
-                                  res <- dbGetQuery(pool, "SELECT SUM(banneado) + COUNT(*) FROM usuarios")
+                                  # Esta consulta detecta cambios si:
+                                  # 1. Cambia el número de usuarios (COUNT)
+                                  # 2. Alguien es baneado/desbaneado (SUM(banneado))
+                                  # 3. Alguien cambia su foto (SUM(LENGTH(foto_blob))) - ESTO ES LO NUEVO
+                                  res <- dbGetQuery(pool, "
+          SELECT COUNT(*) + SUM(banneado) + IFNULL(SUM(LENGTH(foto_blob)), 0) 
+          FROM usuarios
+        ")
                                   return(res)
                                 },
                                 valueFunc = function() {
-                                  dbGetQuery(pool, "SELECT id, usuario, nombre, tipo_usuario, banneado FROM usuarios WHERE tipo_usuario != 'admin'")
+                                  dbGetQuery(pool, "SELECT id, usuario, nombre, tipo_usuario, banneado, foto_blob FROM usuarios WHERE tipo_usuario != 'admin'")
                                 }
     )
     
@@ -41,19 +50,39 @@ userManagementServer <- function(id, pool, user_session) {
           user <- df[i, ]
           esta_activo <- as.integer(user$banneado) == 1
           
+          # --- PROCESAMIENTO DE LA IMAGEN DE USUARIO ---
+          foto_data <- user$foto_blob
+          img_src <- if (is.null(foto_data) || length(unlist(foto_data)) == 0) {
+            "img/default_user.png" # Imagen por defecto si no tiene
+          } else {
+            # Convertimos el binario de la DB a formato legible por el navegador
+            base64enc::dataURI(unlist(foto_data), mime = "image/png")
+          }
+          
           div(
             class = "d-flex align-items-center justify-content-between p-3 mb-2 border rounded shadow-sm bg-white",
             div(
-              span(class = paste("badge me-3", if(esta_activo) "bg-success" else "bg-danger"), 
-                   if(esta_activo) "Activo" else "Baneado"),
-              span(class = "fw-bold text-dark", user$nombre),
-              tags$small(class = "text-muted ms-2", paste0("(@", user$usuario, ")"))
+              class = "d-flex align-items-center",
+              # Miniatura de la foto
+              tags$img(src = img_src, 
+                       class = "rounded-circle border me-3", 
+                       style = "width: 50px; height: 50px; object-fit: cover;"),
+              
+              div(
+                div(
+                  span(class = "fw-bold text-dark", user$nombre),
+                  tags$small(class = "text-muted ms-2", paste0("(@", user$usuario, ")"))
+                ),
+                span(class = paste("badge", if(esta_activo) "bg-success" else "bg-danger"), 
+                     if(esta_activo) "Activo" else "Baneado")
+              )
             ),
+            
+            # Botón de acción
             actionButton(
               ns(paste0("btn_toggle_", user$id)),
               label = if(esta_activo) "Banear" else "Desbanear",
               class = paste("btn btn-sm", if(esta_activo) "btn-outline-danger" else "btn-outline-success"),
-              # IMPORTANTE: Esto envía el ID al servidor mediante JS para evitar duplicados
               onclick = sprintf("Shiny.setInputValue('%s', %d, {priority: 'event'})", ns("user_to_toggle"), user$id)
             )
           )
@@ -89,13 +118,12 @@ userManagementServer <- function(id, pool, user_session) {
     observeEvent(input$btn_save_user, {
       req(pool)
       
-      #validamos que el usuario tenga el perfil correcto para acceder a la creación de usuarios
       user_info <- user_session()
       if (is.null(user_info) || !user_info$tipo_usuario %in% c("admin", "recepcion")) {
         showNotification("No tienes permisos para crear usuarios.", type = "error")
         return()
       }
-      # Recogemos inputs
+      
       nombre   <- input$nombre
       email    <- input$email
       usuario  <- input$usuario
@@ -103,13 +131,11 @@ userManagementServer <- function(id, pool, user_session) {
       tel      <- input$telefono
       tipo     <- input$tipo_usuario
       
-      # 1. Validación de campos vacíos
       if (nombre == "" || email == "" || usuario == "" || pass == "") {
         showNotification("Por favor, rellene todos los campos obligatorios.", type = "error")
         return()
       }
       
-      # 2. Validación de Email (Regex estándar)
       email_valido <- grepl("^[^@]+@[^@]+\\.[^@]+$", email)
       if (!email_valido) {
         showNotification("El formato del correo electrónico no es válido.", type = "warning")
@@ -121,7 +147,6 @@ userManagementServer <- function(id, pool, user_session) {
         return()
       }
       
-      # 3. Verificar duplicados
       exists <- dbGetQuery(pool, "SELECT id FROM usuarios WHERE usuario = ? OR email = ?", 
                            params = list(usuario, email))
       
@@ -130,19 +155,16 @@ userManagementServer <- function(id, pool, user_session) {
         return()
       }
       
-      # 4. HASHEO DE CONTRASEÑA (Usando bcrypt como en tu db_init)
       hash_pass <- bcrypt::hashpw(pass)
       
       tryCatch({
         poolWithTransaction(pool, function(conn) {
-          # Insertar en tabla usuarios (incluyendo teléfono)
           dbExecute(conn, 
                     "INSERT INTO usuarios (usuario, nombre, password_hash, email, telefono, tipo_usuario, banneado) 
-                 VALUES (?, ?, ?, ?, ?, ?, 1)",
+                     VALUES (?, ?, ?, ?, ?, ?, 1)",
                     params = list(usuario, nombre, hash_pass, email, tel, tipo)
           )
           
-          # Si es paciente, insertar también en tabla pacientes
           if (tipo == "paciente") {
             dbExecute(conn, "INSERT INTO pacientes (nombre, email, telefono) VALUES (?, ?, ?)",
                       params = list(nombre, email, tel))
@@ -151,7 +173,7 @@ userManagementServer <- function(id, pool, user_session) {
         
         showNotification("Usuario registrado exitosamente", type = "message")
         
-        # Limpiar inputs
+        # Limpiar campos
         updateTextInput(session, "nombre", value = "")
         updateTextInput(session, "email", value = "")
         updateTextInput(session, "usuario", value = "")
