@@ -20,10 +20,7 @@ profileServer <- function(id, pool, current_user) {
       } else {
         base64enc::dataURI(unlist(blob), mime = "image/png")
       }
-      
-      tags$img(src = img_src, 
-               class = "rounded-circle border shadow-sm mb-3", 
-               style = "width: 160px; height: 160px; object-fit: cover; display: block; margin: 0 auto;")
+      tags$img(src = img_src, class = "profile-photo mb-3")
     })
     
     # Textos que se actualizan automáticamente al cambiar el usuario
