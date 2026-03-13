@@ -59,15 +59,20 @@ CREATE TABLE IF NOT EXISTS pacientes (
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
+
 dbExecute(pool, "
 CREATE TABLE IF NOT EXISTS citas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   paciente_id INT NOT NULL,
-  doctor_id INT NOT NULL,
-  fecha DATETIME NOT NULL,
-  tratamiento VARCHAR(255),
-  FOREIGN KEY (paciente_id) REFERENCES pacientes(id),
-  FOREIGN KEY (doctor_id) REFERENCES usuarios(id)
+  profesional_id INT NOT NULL, 
+  gabinete INT NOT NULL DEFAULT 1, 
+  fecha_inicio DATETIME NOT NULL,
+  fecha_fin DATETIME NOT NULL,
+  tipo_servicio VARCHAR(50), 
+  estado ENUM('programada', 'cancelada', 'completada') DEFAULT 'programada',
+  color VARCHAR(20),                
+  FOREIGN KEY (paciente_id) REFERENCES usuarios(id),
+  FOREIGN KEY (profesional_id) REFERENCES usuarios(id)
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
@@ -134,6 +139,26 @@ insert_contacto <- function(nombre, email, mensaje){
   cat("Mensaje de contacto guardado: ", nombre, "\n")
 }
 
+insert_cita <- function(paciente_id, profesional_id, gabinete, fecha, hora_inicio, duracion_min, servicio) {
+  # Calcular tiempos
+  inicio <- as.POSIXct(paste(fecha, hora_inicio))
+  fin <- inicio + (duracion_min * 60)
+  
+  # Asignar color según gabinete (Lógica visual del RF-12)
+  color <- switch(as.character(gabinete), 
+                  "1" = "#7e57c2", # Púrpura
+                  "2" = "#26a69a", # Verde
+                  "3" = "#ffa726") # Naranja
+  
+  dbExecute(pool,
+            "INSERT INTO citas (paciente_id, profesional_id, gabinete, fecha_inicio, fecha_fin, tipo_servicio, color) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            params = list(paciente_id, profesional_id, gabinete, 
+                          format(inicio, "%Y-%m-%d %H:%M:%S"), 
+                          format(fin, "%Y-%m-%d %H:%M:%S"), 
+                          servicio, color)
+  )
+}
 # -----------------------------
 #  Insertar datos iniciales (solo si RESET_DB = TRUE)
 # -----------------------------
@@ -162,6 +187,18 @@ if (RESET_DB) {
   
   insert_contacto("Usuario Prueba", "lucia.dominguez.rodrigo@gmail.com", "Hola, me gustaría pedir información sobre ortodoncia.")
   message("Datos de contacto iniciales insertados.")
+  
+  # Cita en Gabinete 1 (Púrpura) para el Doctor 1
+  insert_cita(4, 3, 1, Sys.Date(), "10:00:00", 60, "Limpieza Dental")
+  
+  # Cita en Gabinete 2 (Verde) para el Doctor 1
+  insert_cita(4, 3, 2, Sys.Date(), "12:00:00", 30, "Revisión General")
+  
+  # Cita en Gabinete 3 (Naranja) para el Administrador (si actúa como clínico)
+  insert_cita(4, 1, 3, Sys.Date(), "16:00:00", 90, "Ortodoncia")
+  
+  message("Citas de prueba insertadas correctamente.")
+
   
   message("Datos iniciales insertados.")
 }
