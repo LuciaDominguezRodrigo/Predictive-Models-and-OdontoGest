@@ -26,3 +26,5 @@ pool <- dbPool(
   password = db_password,
   port = db_port
 )
+
+Sys.setenv(TZ = "Europe/Madrid")
