@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS citas (
   fecha_fin DATETIME NOT NULL,
   tipo_servicio VARCHAR(50), 
   estado ENUM('programada', 'cancelada', 'completada') DEFAULT 'programada',
-  color VARCHAR(20),                
+  color VARCHAR(20),  
+  observaciones TEXT DEFAULT NULL,
   FOREIGN KEY (paciente_id) REFERENCES usuarios(id),
   FOREIGN KEY (profesional_id) REFERENCES usuarios(id)
 ) DEFAULT CHARSET = utf8mb4;
