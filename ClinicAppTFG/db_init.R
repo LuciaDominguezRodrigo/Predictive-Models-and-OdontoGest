@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash VARCHAR(255) NOT NULL,
   email VARCHAR(100),
   telefono VARCHAR(20),
-  tipo_usuario ENUM('admin','recepcion','doctor','paciente') DEFAULT 'paciente',
+  tipo_usuario ENUM('admin','recepcion','doctor','paciente','higienista') DEFAULT 'paciente',
   banneado INT DEFAULT 1, -- 1 = Activo, 0 = Baneado
   reset_token VARCHAR(255) NULL,
   token_expiry DATETIME NULL, 
@@ -172,8 +172,11 @@ if (RESET_DB) {
               "987654321", "recepcion", foto_nombre_archivo = "default_secretary.png")
   
   # Doctor con su foto
-  insert_user("doctor1", "Dr. Pérez", "medico1", "drperez@clinica.com", 
+  insert_user("doctor1", "Dr. Pérez Jiménez", "medico1", "drperez@clinica.com", 
               "555123456", "doctor", foto_nombre_archivo = "default_doctor.png")
+
+  insert_user("higienista1", "Hg. García  Urbanos", "higienista1", "hggarcia@clinica.com", 
+              "555123456", "higienista", foto_nombre_archivo = "default_doctor.png")
   
   # Usuario genérico (usará default_user.png por defecto según la función)
   insert_user("paciente1", "Juan Sin Foto", "1234", "juan@correo.com", "000000000", "paciente")
@@ -189,13 +192,13 @@ if (RESET_DB) {
   message("Datos de contacto iniciales insertados.")
   
   # Cita en Gabinete 1 (Púrpura) para el Doctor 1
-  insert_cita(4, 3, 1, Sys.Date(), "10:00:00", 60, "Limpieza Dental")
+  insert_cita(5, 3, 1, Sys.Date(), "10:00:00", 60, "Limpieza Dental")
   
   # Cita en Gabinete 2 (Verde) para el Doctor 1
-  insert_cita(4, 3, 2, Sys.Date(), "12:00:00", 30, "Revisión General")
+  insert_cita(5, 3, 2, Sys.Date(), "12:00:00", 30, "Revisión General")
   
   # Cita en Gabinete 3 (Naranja) para el Administrador (si actúa como clínico)
-  insert_cita(4, 1, 3, Sys.Date(), "16:00:00", 90, "Ortodoncia")
+  insert_cita(5, 1, 3, Sys.Date(), "16:00:00", 90, "Ortodoncia")
   
   message("Citas de prueba insertadas correctamente.")
 

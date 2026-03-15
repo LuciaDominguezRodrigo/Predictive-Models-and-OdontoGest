@@ -79,7 +79,9 @@ userManagementUI <- function(id) {
                   selectInput(ns("tipo_usuario"), NULL, 
                               choices = c("Paciente" = "paciente", 
                                           "Recepción" = "recepcion", 
-                                          "Doctor/Personal Clínico" = "doctor"), 
+                                          "Doctor" = "doctor",
+                                          "Higienista dental" = "higienista"
+                                          ), 
                               width = "100%")
               )
           ),
