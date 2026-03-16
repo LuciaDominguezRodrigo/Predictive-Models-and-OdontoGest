@@ -162,7 +162,6 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   # 5. Logout
-  # 5. Logout (app.R)
   observeEvent(input$`main-btn_logout`, {
     # 1. Limpiar R primero
     user_logged(FALSE)

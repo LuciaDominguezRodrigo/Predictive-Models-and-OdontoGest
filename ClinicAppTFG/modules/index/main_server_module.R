@@ -11,27 +11,37 @@ mainServer <- function(id, current_user, user_logged, pool) {
     })
     
     # 2. Renderizar los links del menú
+    # 2. Renderizar los links del menú
     output$dynamic_menu_items <- renderUI({
       req(current_user())
       
+      # Opción base para todos
       opciones <- list(list(id = "perfil", label = "Mi Perfil"))
       
+      # Permisos para gestión de usuarios y buzón (solo admin y recepcion)
       if (current_user()$tipo_usuario %in% c('admin', 'recepcion')) {
-        opciones[[2]] <- list(id = "alta_usuarios", label = "Alta de Usuarios")
-        opciones[[3]] <- list(id = "buzon", label = "Buzón")
-        opciones[[4]] <- list(id = "citas", label = "Citas / Agenda")
+        opciones <- append(opciones, list(
+          list(id = "alta_usuarios", label = "Alta de Usuarios"),
+          list(id = "buzon", label = "Buzón")
+        ))
+      }
+      
+      # Permisos para CITAS (admin, recepcion, doctor e higienista)
+      # Nota: El usuario 'paciente' queda excluido según tu requerimiento
+      if (current_user()$tipo_usuario %in% c('admin', 'recepcion', 'doctor', 'higienista', 'paciente')) {
+        opciones <- append(opciones, list(
+          list(id = "citas", label = "Citas / Agenda")
+        ))
       }
       
       lapply(opciones, function(opc) {
-        # Verificamos si es la pestaña activa para añadir la clase CSS
         es_activo <- if(active_tab() == opc$id) " active bg-purple-active" else ""
         
         actionLink(ns(paste0("btn_", opc$id)), 
                    opc$label, 
                    class = paste0("nav-custom-link", es_activo))
       })
-    })
-    
+    })    
     # 3. Observadores para los clicks
     observeEvent(input$btn_perfil, { active_tab("perfil") })
     observeEvent(input$btn_alta_usuarios, { active_tab("alta_usuarios") })
