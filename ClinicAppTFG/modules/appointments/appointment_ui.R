@@ -6,8 +6,8 @@ appointmentUI <- function(id){
   ns <- NS(id)
   
   tagList(
-    # PARCHE CSS: Desbloquea la interactividad visual y de clic
-    tags$head(
+        shinyjs::useShinyjs(),
+        tags$head(
       tags$style(HTML(sprintf("
         /* Asegura que las citas parezcan clicables y reciban el evento */
         .toastui-calendar-weekday-event, 
