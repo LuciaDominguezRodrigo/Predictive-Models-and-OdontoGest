@@ -12,18 +12,50 @@ profileServer <- function(id, pool, current_user) {
     # Renderizado de la foto circular en la parte superior
     output$profile_img_container <- renderUI({
       req(current_user())
-      blob <- current_user()$foto_blob
+      user_id <- current_user()$id
       
-      # unlist() es necesario para que base64enc procese correctamente el vector raw
-      img_src <- if (is.null(blob) || length(unlist(blob)) == 0) {
-        "img/default_user.png" 
+      # 1. Hacemos una query específica para obtener el BLOB limpio de la DB
+      # Usamos dbGetQuery para traer el dato justo en este momento
+      foto_data <- tryCatch({
+        res <- dbGetQuery(pool, "SELECT foto_blob FROM usuarios WHERE id = ?", params = list(user_id))
+        
+        # Accedemos a la primera fila, primera columna
+        if (nrow(res) > 0) {
+          dato <- res$foto_blob[[1]]
+          # Si el driver lo devuelve como un objeto 'blob', lo convertimos a raw
+          if (inherits(dato, "blob")) {
+            as.vector(dato, mode = "raw")
+          } else {
+            dato
+          }
+        } else {
+          NULL
+        }
+      }, error = function(e) {
+        message("Error consultando foto: ", e$message)
+        NULL
+      })
+      
+      # 2. Lógica de renderizado final
+      img_src <- if (!is.null(foto_data) && (is.raw(foto_data) || is.list(foto_data))) {
+        # Si es una lista (a veces ocurre), intentamos aplanar
+        final_raw <- if(is.list(foto_data)) unlist(foto_data) else foto_data
+        
+        # Verificación final antes de codificar
+        if (length(final_raw) > 0) {
+          base64enc::dataURI(final_raw, mime = "image/png")
+        } else {
+          "img/default_user.png"
+        }
       } else {
-        base64enc::dataURI(unlist(blob), mime = "image/png")
+        "img/default_user.png"
       }
+      
       tags$img(src = img_src, class = "profile-photo mb-3")
     })
     
-    # Textos que se actualizan automáticamente al cambiar el usuario
+    
+    
     output$txt_nombre <- renderText({ req(current_user()); current_user()$nombre })
     output$txt_email  <- renderText({ req(current_user()); current_user()$email })
     output$txt_tel    <- renderText({ req(current_user()); current_user()$telefono })

@@ -34,7 +34,7 @@ source("modules/login/login_server.R")
 source("modules/index/main_ui_module.R")
 source("modules/index/main_server_module.R")
 
-#reset password: reset password form y envio de correo/reseteo de contraseña
+
 source("modules/reset_password/reset_password_ui.R")
 source("modules/reset_password/reset_password_server.R")
 source("modules/reset_password/reset_confirm_ui.R")
@@ -52,8 +52,12 @@ source("modules/public/public_landing_server.R")
 source("modules/contact_management/contact_management_UI.R")
 source("modules/contact_management/contact_management_server.R")
 
+
 source("modules/profile/profile_UI.R")
 source("modules/profile/profile_server.R")
+
+source("modules/appointments/appointment_ui.R")
+source("modules/appointments/appointment_server.R")
 # -----------------------------
 # UI principal
 # -----------------------------
@@ -105,7 +109,6 @@ server <- function(input, output, session) {
   })
   
   # 2. Rehidratación de sesión
-  # 2. Rehidratación de sesión mejorada
   observeEvent(input$recovered_user, {
     # Si es NULL o el texto "null", nos aseguramos de que no haya login
     if (is.null(input$recovered_user) || input$recovered_user == "null") {
@@ -158,7 +161,6 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   # 5. Logout
-  # 5. Logout (app.R)
   observeEvent(input$`main-btn_logout`, {
     # 1. Limpiar R primero
     user_logged(FALSE)
