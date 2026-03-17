@@ -109,7 +109,6 @@ server <- function(input, output, session) {
   })
   
   # 2. Rehidratación de sesión
-  # 2. Rehidratación de sesión mejorada
   observeEvent(input$recovered_user, {
     # Si es NULL o el texto "null", nos aseguramos de que no haya login
     if (is.null(input$recovered_user) || input$recovered_user == "null") {
