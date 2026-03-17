@@ -14,7 +14,8 @@ library(bcrypt)
 library(shinyjs)
 library(jsonlite)
 library(bslib)
-
+library(toastui)
+library(shinyWidgets)
 
 # -----------------------------
 # Config global y base de datos
