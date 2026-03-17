@@ -4,7 +4,6 @@
 # DESCRIPCIÓN: Este script recrea la base de datos y las tablas desde cero si RESET_DB = TRUE
 # ==============================================================================
 
-
 library(DBI)
 library(pool)
 library(bcrypt)
@@ -46,6 +45,20 @@ CREATE TABLE IF NOT EXISTS usuarios (
   reset_token VARCHAR(255) NULL,
   token_expiry DATETIME NULL, 
   foto_blob LONGBLOB NULL
+) DEFAULT CHARSET = utf8mb4;
+")
+
+dbExecute(pool, "
+CREATE TABLE IF NOT EXISTS notas_clinicas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  paciente_id INT NOT NULL,
+  profesional_id INT NOT NULL,
+  fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+  contenido TEXT NOT NULL,
+  archivo_path TEXT NULL,
+  nombre_archivo VARCHAR(255) NULL,
+  FOREIGN KEY (paciente_id) REFERENCES usuarios(id),
+  FOREIGN KEY (profesional_id) REFERENCES usuarios(id)
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
@@ -160,6 +173,24 @@ insert_cita <- function(paciente_id, profesional_id, gabinete, fecha, hora_inici
                           servicio, color)
   )
 }
+
+# -----------------------------
+#  Función para insertar Notas Clínicas
+# -----------------------------
+insert_nota_clinica <- function(paciente_id, profesional_id, contenido, fecha = NULL) {
+  # Si no se proporciona fecha, usamos la actual
+  if (is.null(fecha)) {
+    fecha <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  }
+  
+  dbExecute(pool,
+            "INSERT INTO notas_clinicas (paciente_id, profesional_id, contenido, fecha) 
+             VALUES (?, ?, ?, ?)",
+            params = list(paciente_id, profesional_id, contenido, fecha)
+  )
+  cat("Nota clínica añadida para el paciente ID:", paciente_id, "\n")
+}
+
 # -----------------------------
 #  Insertar datos iniciales (solo si RESET_DB = TRUE)
 # -----------------------------
@@ -200,6 +231,14 @@ if (RESET_DB) {
   
   # Cita en Gabinete 3 (Naranja) para el Administrador (si actúa como clínico)
   insert_cita(5, 1, 3, Sys.Date(), "16:00:00", 90, "Ortodoncia")
+  
+  # Nota del Doctor (ID 3) al Paciente (ID 5)
+  insert_nota_clinica(5, 3, "El paciente presenta una ligera inflamación en la encía superior. Se recomienda limpieza profunda.")
+  
+  # Nota del Higienista (ID 4) al Paciente (ID 5)
+  insert_nota_clinica(5, 4, "Se ha realizado la limpieza. El paciente colabora bien, pero debe mejorar el uso de seda dental.")
+  
+  message("Notas clínicas de prueba insertadas correctamente.")
   
   message("Citas de prueba insertadas correctamente.")
 

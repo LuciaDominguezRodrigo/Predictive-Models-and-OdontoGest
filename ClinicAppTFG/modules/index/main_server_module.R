@@ -26,6 +26,12 @@ mainServer <- function(id, current_user, user_logged, pool) {
         ))
       }
       
+      if (current_user()$tipo_usuario %in% c('admin', 'doctor', 'higienista')) {
+        opciones <- append(opciones, list(
+          list(id = "historial", label = "Historial Clínico")
+        ))
+      }
+      
       # Permisos para CITAS (admin, recepcion, doctor e higienista)
       # Nota: El usuario 'paciente' queda excluido según tu requerimiento
       if (current_user()$tipo_usuario %in% c('admin', 'recepcion', 'doctor', 'higienista', 'paciente')) {
@@ -47,6 +53,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
     observeEvent(input$btn_alta_usuarios, { active_tab("alta_usuarios") })
     observeEvent(input$btn_buzon, { active_tab("buzon") })
     observeEvent(input$btn_citas, { active_tab("citas") })
+    observeEvent(input$btn_historial, { active_tab("historial") }) # <--- Nuevo
     
     # 4. Renderizado del contenido central (MEJORADO)
     output$tab_content <- renderUI({
@@ -64,7 +71,9 @@ mainServer <- function(id, current_user, user_logged, pool) {
                  "buzon" = div(class="bg-white p-4 rounded shadow-sm border", 
                                contactManagementUI(ns("contact_mod"))),
                  "citas" = div(class="bg-white p-4 rounded shadow-sm border", 
-                               appointmentUI(ns("appointment_mod")))
+                               appointmentUI(ns("appointment_mod"))),
+                 "historial" = div(class="bg-white p-4 rounded shadow-sm border",
+                                   historyUI(ns("history_mod")))
           )
       )
     })
@@ -73,12 +82,13 @@ mainServer <- function(id, current_user, user_logged, pool) {
     # Esto evita que el contenido "desaparezca" al loguear por primera vez
     outputOptions(output, "tab_content", suspendWhenHidden = FALSE)
     outputOptions(output, "dynamic_menu_items", suspendWhenHidden = FALSE)
-    
+
     # 6. Inicialización de sub-módulos
     profileServer("profile_mod", pool, current_user)
     userManagementServer("create_user_mod", pool, current_user)
     contactManagementServer("contact_mod", pool)
     appointmentServer("appointment_mod", pool, current_user)
+    historyServer("history_mod", pool, current_user, active_tab) 
     
     # Logout
     observeEvent(input$btn_logout, {
