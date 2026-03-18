@@ -15,11 +15,9 @@ suppressPackageStartupMessages({
 })
 
 # 2. CARGA DEL MÓDULO ----------------------------------------------------------
-# Ajusta la ruta según tu estructura de carpetas
 source("../modules/profile/profile_server.R") 
 
 # 3. STUBS GLOBALES ------------------------------------------------------------
-# Evitamos que las funciones de base de datos y red intenten ejecutarse realmente
 dbExecute <- function(pool, query, params) 1
 GET <- function(url) list(status_code = 200, content = raw(0))
 content <- function(res, as) raw(0)
@@ -61,7 +59,6 @@ describe("Módulo Perfil (Profile)", {
     user_init <- list(id = 1, nombre = "User", foto_blob = NULL)
     current_user <- reactiveVal(user_init)
     
-    # Mock de la respuesta de red (simulamos un binario de imagen)
     fake_blob <- as.raw(c(0x89, 0x50, 0x4E, 0x47)) # Firma de un PNG
     m_get <- mock(list(status_code = 200))
     m_content <- mock(fake_blob)
@@ -81,7 +78,6 @@ describe("Módulo Perfil (Profile)", {
       session$setInputs(do_save_photo_url = 1)
       session$flushReact()
       
-      # Verificamos que el reactivo ahora tiene el blob (dentro de una lista como pide tu código)
       expect_equal(current_user()$foto_blob, list(fake_blob))
       expect_called(m_get, 1)
       expect_called(m_db, 1)
@@ -111,7 +107,6 @@ describe("Módulo Perfil (Profile)", {
     })
   })
   
-  # --- Caso 4: Renderizado de Imagen por Defecto ---
   # --- Caso 4: Renderizado de Imagen por Defecto ---
   test_that("Si no hay blob, el contenedor de imagen usa la ruta por defecto", {
     # Usuario sin foto

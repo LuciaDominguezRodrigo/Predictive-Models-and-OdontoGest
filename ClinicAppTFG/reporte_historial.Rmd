@@ -1,0 +1,17 @@
+---
+title: "Historial Clínico"
+output: pdf_document
+params:
+  paciente: ""
+  eventos: !r data.frame()
+---
+
+# Paciente: `r params$paciente`
+
+```{r, echo=FALSE}
+# CORRECCIÓN: Usamos params$eventos
+if(nrow(params$eventos) > 0) {
+  knitr::kable(params$eventos[, c("fecha", "tipo", "titulo", "detalle")])
+} else {
+  cat("No hay registros para este paciente.")
+}

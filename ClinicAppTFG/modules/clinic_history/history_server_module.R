@@ -1,217 +1,286 @@
+library(rmarkdown)
+library(pagedown)
+
 historyServer <- function(id, pool, current_user, active_tab) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # ---------------- REACTIVOS ----------------
-    notas_refresh <- reactiveVal(0)
-    ultima_nota_id <- reactiveVal(NULL)
+    options(shiny.maxRequestSize = 30 * 1024^2)
     
-    # ---------------- CARPETA UPLOADS ----------------
+    # ---------------- 0. ESTILOS + JS SPINNER ----------------
+    insertUI(selector = "head", where = "beforeEnd", ui = tagList(
+      
+      tags$style(HTML(paste0("
+        .", ns("btn-pdf-refinado"), " {
+          color: #dc3545 !important;
+          background-color: transparent !important;
+          border: 2px solid #dc3545 !important;
+          transition: all 0.3s ease !important;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .", ns("btn-pdf-refinado"), ":hover {
+          color: white !important;
+          background-color: #dc3545 !important;
+          box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-adjunto-mini {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          background-color: #dc3545;
+          color: white !important;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 500;
+          text-decoration: none;
+          transition: opacity 0.2s;
+        }
+        .btn-adjunto-mini:hover {
+          opacity: 0.8;
+          color: white !important;
+        }
+      "))),
+      
+      tags$script(HTML(paste0("
+        $(document).on('click', '#", ns("descargar_pdf"), "', function() {
+          var btn = $(this);
+          btn.prop('disabled', true);
+          btn.data('original-text', btn.html());
+          btn.html('<i class=\"fa fa-spinner fa-spin\"></i> Generando informe clínico...');
+          
+          setTimeout(function() {
+            btn.prop('disabled', false);
+            btn.html(btn.data('original-text'));
+          }, 10000);
+        });
+      ")))
+    ))
+    
+    # ---------------- 1. REACTIVOS ----------------
+    notas_refresh <- reactiveVal(0)
+    
+    # ---------------- 2. UPLOADS ----------------
     UPLOAD_DIR <- "www/uploads"
     if (!dir.exists(UPLOAD_DIR)) {
       dir.create(UPLOAD_DIR, recursive = TRUE)
     }
     
-    # ---------------- 1. CARGA DE PACIENTES ----------------
+    # ---------------- 3. PACIENTES ----------------
     observeEvent(active_tab(), {
       if (active_tab() != "historial") return()
       
       df_pacientes <- DBI::dbGetQuery(pool, "
-        SELECT id, nombre 
-        FROM usuarios 
-        WHERE tipo_usuario = 'paciente'
-        ORDER BY nombre
+        SELECT id, nombre FROM usuarios 
+        WHERE tipo_usuario = 'paciente' ORDER BY nombre
       ")
       
       if (nrow(df_pacientes) > 0) {
         choices <- setNames(df_pacientes$id, df_pacientes$nombre)
-        
         shinyWidgets::updatePickerInput(
-          session,
-          inputId = "select_paciente",
+          session, "select_paciente",
           choices = c("Seleccione un paciente..." = NA, choices),
-          selected = NA
-        )
-      } else {
-        shinyWidgets::updatePickerInput(
-          session,
-          inputId = "select_paciente",
-          choices = c("Sin pacientes disponibles" = NA),
           selected = NA
         )
       }
     }, ignoreInit = FALSE)
     
-    # ---------------- 2. BOTÓN NUEVA NOTA (RENDER) ----------------
+    # ---------------- 4. BOTONES ----------------
     output$btn_nueva_nota_container <- renderUI({
-      req(current_user())
-      # Solo perfiles autorizados pueden ver el botón
+      req(current_user(), input$select_paciente)
+      
       if (current_user()$tipo_usuario %in% c("admin", "doctor", "higienista")) {
-        actionButton(ns("nueva_nota"), "➕ Nueva Nota Médica", class = "btn-purple w-100")
+        tagList(
+          actionButton(ns("nueva_nota"), "➕ Nueva Nota Médica", class = "btn-purple w-100 mb-2"),
+          downloadButton(ns("descargar_pdf"), "📄 Descargar Historial PDF", 
+                         class = paste("btn w-100", ns("btn-pdf-refinado")))
+        )
       }
     })
     
-    # ---------------- 3. MODAL DE NUEVA NOTA ----------------
+    # ---------------- 5. NUEVA NOTA ----------------
     observeEvent(input$nueva_nota, {
-      if (is.null(input$select_paciente) || is.na(input$select_paciente)) {
-        showNotification("Debe seleccionar un paciente primero", type = "warning")
-        return()
-      }
-      
       showModal(modalDialog(
         title = "Nueva Nota Médica",
-        textAreaInput(ns("contenido_nota"), "Contenido de la nota", rows = 6, placeholder = "Escriba la evolución clínica..."),
-        fileInput(ns("archivo_nota"), "Adjuntar documento o imagen (Opcional)"),
+        textAreaInput(ns("contenido_nota"), "Contenido de la nota", rows = 6),
+        fileInput(ns("archivo_nota"), "Adjuntar archivos", multiple = TRUE),
         footer = tagList(
           modalButton("Cancelar"),
-          actionButton(ns("guardar_nota"), "Guardar Nota", class = "btn-purple")
+          actionButton(ns("guardar_nota"), "Guardar", class = "btn-purple")
         ),
         size = "m"
       ))
     })
     
-    # ---------------- 4. PROCESO DE GUARDADO ----------------
     observeEvent(input$guardar_nota, {
       req(input$select_paciente, input$contenido_nota)
       
       user <- current_user()
-      archivo_path <- NA
-      nombre_archivo <- NA
+      rutas_relativas <- c()
+      fecha_actual <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
       
-      # Manejo de Archivos Adjuntos
       if (!is.null(input$archivo_nota)) {
-        ext <- tolower(tools::file_ext(input$archivo_nota$name))
-        nombre_archivo <- paste0(
-          "pac_", input$select_paciente, "_",
-          format(Sys.time(), "%Y%m%d_%H%M%S"),
-          ".", ext
+        archivos <- input$archivo_nota
+        for (i in 1:nrow(archivos)) {
+          ext <- tolower(tools::file_ext(archivos$name[i]))
+          nombre_gen <- paste0(
+            "pac_", input$select_paciente, "_",
+            format(Sys.time(), "%Y%m%d_%H%M%S"), "_", i, ".", ext
+          )
+          ruta_destino <- file.path(UPLOAD_DIR, nombre_gen)
+          
+          if (file.copy(archivos$datapath[i], ruta_destino)) {
+            rutas_relativas <- c(rutas_relativas, file.path("uploads", nombre_gen))
+          }
+        }
+      }
+      
+      archivo_path_db <- if (length(rutas_relativas) > 0) {
+        paste(rutas_relativas, collapse = ",")
+      } else NA
+      
+      DBI::dbExecute(pool, "
+        INSERT INTO notas_clinicas (paciente_id, profesional_id, fecha, contenido, archivo_path)
+        VALUES (?, ?, ?, ?, ?)
+      ", params = list(
+        input$select_paciente,
+        user$id,
+        fecha_actual,
+        input$contenido_nota,
+        archivo_path_db
+      ))
+      
+      notas_refresh(notas_refresh() + 1)
+      removeModal()
+      showNotification("Nota guardada", type = "message")
+    })
+    
+    # ---------------- 6. PDF ----------------
+    output$descargar_pdf <- downloadHandler(
+      filename = function() {
+        paste0("Historial_", input$select_paciente, "_", Sys.Date(), ".pdf")
+      },
+      content = function(file) {
+        req(input$select_paciente)
+        
+        info_pac <- DBI::dbGetQuery(pool,
+                                    "SELECT nombre FROM usuarios WHERE id = ?",
+                                    params = list(input$select_paciente)
         )
         
-        ruta_destino <- file.path(UPLOAD_DIR, nombre_archivo)
-        ok <- file.copy(input$archivo_nota$datapath, ruta_destino)
+        eventos <- DBI::dbGetQuery(pool, "
+          (SELECT fecha_inicio AS fecha, tipo_servicio AS titulo, observaciones AS detalle, 'Cita' AS tipo FROM citas WHERE paciente_id = ?)
+          UNION ALL
+          (SELECT fecha AS fecha, 'Nota Médica' AS titulo, contenido AS detalle, 'Nota' AS tipo FROM notas_clinicas WHERE paciente_id = ?)
+          ORDER BY fecha DESC
+        ", params = list(input$select_paciente, input$select_paciente))
         
-        if (!ok) {
-          showNotification("Error al guardar el archivo en el servidor", type = "error")
-          return()
-        }
+        temp_rmd  <- file.path(tempdir(), "reporte.Rmd")
+        temp_html <- file.path(tempdir(), "reporte.html")
         
-        # Ruta relativa para el navegador (apunta a www/uploads pero se accede vía uploads/)
-        archivo_path <- file.path("uploads", nombre_archivo)
+        writeLines(c(
+          "---",
+          "title: 'Informe Historial Clínico'",
+          "output: html_document",
+          "params:",
+          "  paciente: NA",
+          "  eventos: NA",
+          "---",
+          
+          "```{r setup, include=FALSE}",
+          "library(knitr)",
+          "eventos <- params$eventos",
+          "```",
+          
+          "## Paciente",
+          "`r params$paciente`",
+          
+          "## Historial",
+          
+          "```{r, echo=FALSE}",
+          "knitr::kable(eventos[,c('fecha','tipo','titulo','detalle')])",
+          "```"
+          
+        ), temp_rmd)
+        
+        rmarkdown::render(
+          temp_rmd,
+          output_file = temp_html,
+          params = list(
+            paciente = info_pac$nombre,
+            eventos = eventos
+          ),
+          envir = new.env(parent = globalenv())
+        )
+        
+        Sys.sleep(2)
+        
+        pagedown::chrome_print(
+          input = temp_html,
+          output = file,
+          wait = 5,
+          timeout = 60,
+          options = list(printBackground = TRUE)
+        )
       }
-      
-      tryCatch({
-        DBI::dbExecute(pool, "
-          INSERT INTO notas_clinicas 
-          (paciente_id, profesional_id, fecha, contenido, archivo_path, nombre_archivo)
-          VALUES (?, ?, NOW(), ?, ?, ?)
-        ", params = list(
-          input$select_paciente,
-          user$id,
-          input$contenido_nota,
-          archivo_path,
-          nombre_archivo
-        ))
-        
-        # Obtener el ID para resaltar la nota
-        res_id <- DBI::dbGetQuery(pool, "SELECT LAST_INSERT_ID() as id")
-        ultima_nota_id(res_id$id)
-        
-        # Actualizar UI
-        notas_refresh(notas_refresh() + 1)
-        removeModal()
-        showNotification("Nota guardada correctamente", type = "message")
-        
-      }, error = function(e) {
-        showNotification(paste("Error en DB:", e$message), type = "error")
-      })
-    })
+    )
     
-    # ---------------- 5. UI: RESUMEN DEL PACIENTE ----------------
-    output$resumen_paciente <- renderUI({
-      req(input$select_paciente)
-      if (is.na(input$select_paciente)) return(p(class="text-muted", "Seleccione un paciente para ver su información."))
-      
-      pacc <- DBI::dbGetQuery(pool,
-                              "SELECT nombre, email, telefono FROM usuarios WHERE id = ?",
-                              params = list(input$select_paciente)
-      )
-      
-      if (nrow(pacc) == 0) return(NULL)
-      
-      div(class = "mt-2 p-3 border rounded bg-light",
-          span(class = "badge bg-info mb-2", "Paciente Activo"),
-          h5(class = "text-purple", pacc$nombre),
-          p(class="mb-1", tags$strong("Email: "), pacc$email),
-          p(class="mb-0", tags$strong("Tel: "), pacc$telefono)
-      )
-    })
-    
-    # ---------------- 6. UI: TIMELINE DINÁMICO ----------------
+    # ---------------- 7. TIMELINE ----------------
     output$timeline_historial <- renderUI({
       req(input$select_paciente)
-      notas_refresh() # Dependencia para refrescar
+      notas_refresh()
       
-      if (is.na(input$select_paciente)) {
-        return(div(class="text-center p-5", p("Por favor, seleccione un paciente de la lista.")))
-      }
-      
-      # Query unificada de Citas y Notas
       eventos <- DBI::dbGetQuery(pool, "
-        (SELECT id, fecha_inicio AS fecha, tipo_servicio AS titulo, observaciones AS detalle, 
-                'Cita' AS tipo, NULL AS archivo_path
-         FROM citas WHERE paciente_id = ?)
+        (SELECT id, fecha_inicio AS fecha, tipo_servicio AS titulo, observaciones AS detalle, 'Cita' AS tipo, NULL AS archivo_path FROM citas WHERE paciente_id = ?)
         UNION ALL
-        (SELECT id, fecha AS fecha, 'Nota Médica' AS titulo, contenido AS detalle, 
-                'Nota' AS tipo, archivo_path
-         FROM notas_clinicas WHERE paciente_id = ?)
+        (SELECT id, fecha AS fecha, 'Nota Médica' AS titulo, contenido AS detalle, 'Nota' AS tipo, archivo_path FROM notas_clinicas WHERE paciente_id = ?)
         ORDER BY fecha DESC
       ", params = list(input$select_paciente, input$select_paciente))
-      
-      if (nrow(eventos) == 0) {
-        return(div(class="text-center p-5", p("No existen registros históricos para este paciente.")))
-      }
       
       tagList(
         lapply(seq_len(nrow(eventos)), function(i) {
           
-          color <- if (eventos$tipo[i] == "Cita") "border-purple" else "border-info"
+          color_borde <- if (eventos$tipo[i] == "Cita") "border-purple" else "border-info"
           
-          # Efecto visual si es la nota recién creada
-          es_nueva <- !is.null(ultima_nota_id()) && 
-            eventos$tipo[i] == "Nota" && 
-            eventos$id[i] == ultima_nota_id()
-          
-          clase_extra <- if (es_nueva) "bg-warning-subtle p-3 rounded" else "p-2"
-          
-          div(class = paste0("border-start border-4 ps-3 mb-4 ", color, " ", clase_extra),
-              span(class = "text-muted small", format(as.POSIXct(eventos$fecha[i]), "%d/%m/%Y %H:%M")),
+          div(class = paste0("border-start border-4 ps-3 mb-4 ", color_borde),
+              span(class = "text-muted small",
+                   format(as.POSIXct(eventos$fecha[i]), "%d/%m/%Y %H:%M")),
               h5(class="mt-1", eventos$titulo[i]),
               p(class="text-dark", eventos$detalle[i]),
               
-              # Lógica de Previsualización de Archivos
               if (!is.na(eventos$archivo_path[i]) && eventos$archivo_path[i] != "") {
-                ext <- tolower(tools::file_ext(eventos$archivo_path[i]))
+                rutas <- strsplit(eventos$archivo_path[i], ",")[[1]]
                 
-                if (ext %in% c("png", "jpg", "jpeg")) {
-                  tags$div(class="mt-2",
-                           tags$img(src = eventos$archivo_path[i], 
-                                    class="img-thumbnail", 
-                                    style = "max-width:250px; cursor:zoom-in;",
-                                    onclick = paste0("window.open('", eventos$archivo_path[i], "')"))
-                  )
-                } else if (ext == "pdf") {
-                  tags$iframe(src = eventos$archivo_path[i], 
-                              width = "100%", height = "300px", 
-                              style = "border:none; margin-top:10px;")
-                } else {
-                  tags$a(href = eventos$archivo_path[i], target = "_blank", 
-                         class="btn btn-sm btn-outline-secondary mt-2",
-                         "📎 Descargar Documento")
-                }
+                div(class="d-flex flex-wrap gap-2 mt-2", 
+                    lapply(rutas, function(r) {
+                      ext <- tolower(tools::file_ext(r))
+                      
+                      if (ext %in% c("png", "jpg", "jpeg")) {
+                        tags$img(
+                          src = r,
+                          class="img-thumbnail",
+                          style="width:80px;height:80px;object-fit:cover;cursor:pointer;",
+                          onclick = paste0("window.open('", r, "')")
+                        )
+                      } else {
+                        tags$a(
+                          href = r,
+                          target = "_blank",
+                          class="btn-adjunto-mini",
+                          tags$i(class="fa fa-file-pdf"),
+                          basename(r)
+                        )
+                      }
+                    })
+                )
               },
               
               div(class="mt-2",
-                  span(class = paste0("badge ", if(eventos$tipo[i]=="Cita") "bg-purple" else "bg-info"), 
+                  span(class = paste0("badge ",
+                                      if(eventos$tipo[i]=="Cita") "bg-purple" else "bg-info"),
                        eventos$tipo[i])
               )
           )
