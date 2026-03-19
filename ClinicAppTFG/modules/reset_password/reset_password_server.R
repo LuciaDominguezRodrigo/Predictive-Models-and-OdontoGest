@@ -131,6 +131,7 @@ resetPasswordServer <- function(id, pool, show_view, update_url) {
       # 5. Restaurar UI
       shinyjs::enable("btn_reset")
       shinyjs::html("btn_label", "Enviar enlace")
+      
       updateTextInput(session, "usuario_reset", value = "")
     })
     

@@ -47,24 +47,56 @@ resetConfirmServer <- function(id, pool, show_view, update_url, token_manual = N
       if (is.data.frame(u)) {
         tagList(
           # Nueva Contraseña
+          # Nueva Contraseña
           div(
-            class = "mb-2",
-            tags$label("Nueva Contraseña", class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-2 ml-1"),
-            passwordInput(ns("new_pass1"), label = NULL, placeholder = "••••••••")
+            class = "form-group",
+            style = "margin-bottom: 20px; text-align: left;",
+            
+            tags$label("Nueva Contraseña",
+                       style = "font-weight: 700; color: #475569; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;"),
+            
+            tags$input(
+              id = ns("new_pass1"),
+              type = "password",
+              class = "form-control",
+              placeholder = "••••••••",
+              style = "height: 45px; border-radius: 12px; border: 1px solid #e2e8f0; background-color: #f8fafc;"
+            )
           ),
           
-          # Confirmar
+          # Confirmar Contraseña
           div(
-            class = "mb-6",
-            tags$label("Confirmar Contraseña", class = "block text-sm font-bold text-gray-600 uppercase tracking-wider mb-2 ml-1"),
-            passwordInput(ns("new_pass2"), label = NULL, placeholder = "••••••••")
+            class = "form-group",
+            style = "margin-bottom: 25px; text-align: left;",
+            
+            tags$label("Confirmar Contraseña",
+                       style = "font-weight: 700; color: #475569; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;"),
+            
+            tags$input(
+              id = ns("new_pass2"),
+              type = "password",
+              class = "form-control",
+              placeholder = "••••••••",
+              style = "height: 45px; border-radius: 12px; border: 1px solid #e2e8f0; background-color: #f8fafc;"
+            )
           ),
           
           # Botón Estilizado
           actionButton(
             ns("btn_set_pass"), 
-            "Guardar Nueva Contraseña",
-            class = "w-full py-5 rounded-xl text-white text-xl font-bold tracking-wide bg-clinicPurple hover:bg-purple-700 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-purple-200"
+            "Guardar nueva contraseña",
+            class = "btn btn-primary",
+            style = "
+                background-color: #6a0dad; 
+                border: none; 
+                height: 50px; 
+                width: 100%; 
+                border-radius: 15px; 
+                font-size: 1.1rem; 
+                font-weight: 700; 
+                transition: transform 0.2s; 
+                box-shadow: 0 4px 15px rgba(106, 13, 173, 0.2);
+           "
           ),
           
           # Mensaje de error/éxito
