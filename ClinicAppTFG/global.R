@@ -28,3 +28,7 @@ pool <- dbPool(
 )
 
 Sys.setenv(TZ = "Europe/Madrid")
+
+Sys.setenv(
+  PAGEDOWN_CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+)

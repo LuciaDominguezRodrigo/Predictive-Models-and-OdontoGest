@@ -1,0 +1,32 @@
+.btn-purple {
+  background: linear-gradient(135deg, #6f42c1, #8e63ff);
+  color: white !important;
+  border: none;
+}
+
+.btn-purple:hover {
+  background: linear-gradient(135deg, #5a35a5, #7a52e0);
+}
+
+.btn-float {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+}
+
+.timeline-card {
+  border-left: 5px solid #6f42c1;
+  border-radius: 12px;
+}
+
+.btn-action {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.btn-delete { color: red; }
+.btn-edit { color: #6f42c1; }

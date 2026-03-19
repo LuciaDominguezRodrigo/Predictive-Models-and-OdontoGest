@@ -2,23 +2,26 @@ mainServer <- function(id, current_user, user_logged, pool) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # 1. Estado de la pestaña activa
-    active_tab <- reactiveVal("perfil")
+    # 1. Estado de la pestaña (inicial NULL para evitar arrastres)
+    active_tab <- reactiveVal(NULL)
+    
+    observeEvent(user_logged(), {
+      if (isTRUE(user_logged())) {
+        active_tab("perfil")
+      }
+    }, ignoreInit = TRUE)
     
     output$welcome <- renderText({ 
       req(current_user())
       paste0("Bienvenido, ", current_user()$nombre) 
     })
     
-    # 2. Renderizar los links del menú
-    # 2. Renderizar los links del menú
+    # ---------------- MENU ----------------
     output$dynamic_menu_items <- renderUI({
-      req(current_user())
+      req(current_user(), user_logged() == TRUE)
       
-      # Opción base para todos
       opciones <- list(list(id = "perfil", label = "Mi Perfil"))
       
-      # Permisos para gestión de usuarios y buzón (solo admin y recepcion)
       if (current_user()$tipo_usuario %in% c('admin', 'recepcion')) {
         opciones <- append(opciones, list(
           list(id = "alta_usuarios", label = "Alta de Usuarios"),
@@ -26,32 +29,50 @@ mainServer <- function(id, current_user, user_logged, pool) {
         ))
       }
       
-      # Permisos para CITAS (admin, recepcion, doctor e higienista)
-      # Nota: El usuario 'paciente' queda excluido según tu requerimiento
+      if (current_user()$tipo_usuario %in% c('admin', 'doctor', 'higienista')) {
+        opciones <- append(opciones, list(
+          list(id = "historial", label = "Historial Clínico")
+        ))
+      }
+      
       if (current_user()$tipo_usuario %in% c('admin', 'recepcion', 'doctor', 'higienista', 'paciente')) {
         opciones <- append(opciones, list(
           list(id = "citas", label = "Citas / Agenda")
         ))
       }
       
+      if (current_user()$tipo_usuario %in% c('paciente')) {
+        opciones <- append(opciones, list(
+          list(id = "justificantes", label = "Mis justificantes")
+        ))
+      }
+      
       lapply(opciones, function(opc) {
-        es_activo <- if(active_tab() == opc$id) " active bg-purple-active" else ""
+        es_activo <- if(!is.null(active_tab()) && active_tab() == opc$id) {
+          " active bg-purple-active"
+        } else ""
         
-        actionLink(ns(paste0("btn_", opc$id)), 
-                   opc$label, 
-                   class = paste0("nav-custom-link", es_activo))
+        actionLink(
+          ns(paste0("btn_", opc$id)), 
+          opc$label, 
+          class = paste0("nav-custom-link", es_activo)
+        )
       })
-    })    
-    # 3. Observadores para los clicks
+    })
+    
+    # ---------------- CLICKS ----------------
     observeEvent(input$btn_perfil, { active_tab("perfil") })
     observeEvent(input$btn_alta_usuarios, { active_tab("alta_usuarios") })
     observeEvent(input$btn_buzon, { active_tab("buzon") })
     observeEvent(input$btn_citas, { active_tab("citas") })
+    observeEvent(input$btn_historial, { active_tab("historial") })
+    observeEvent(input$btn_justificantes, { active_tab("justificantes") })
     
-    # 4. Renderizado del contenido central (MEJORADO)
+    # ---------------- CONTENIDO ----------------
     output$tab_content <- renderUI({
-      # req() asegura que no intente renderizar si no hay login o pestaña
-      req(user_logged(), current_user(), active_tab())
+      req(user_logged() == TRUE)
+      req(current_user())
+      req(active_tab())
       
       tab <- active_tab()
       
@@ -59,31 +80,42 @@ mainServer <- function(id, current_user, user_logged, pool) {
           switch(tab,
                  "perfil" = div(class="bg-white p-4 rounded shadow-sm border", 
                                 profileUI(ns("profile_mod"))),
+                 
                  "alta_usuarios" = div(class="bg-white p-4 rounded shadow-sm border", 
                                        userManagementUI(ns("create_user_mod"))),
+                 
                  "buzon" = div(class="bg-white p-4 rounded shadow-sm border", 
                                contactManagementUI(ns("contact_mod"))),
+                 
                  "citas" = div(class="bg-white p-4 rounded shadow-sm border", 
-                               appointmentUI(ns("appointment_mod")))
+                               appointmentUI(ns("appointment_mod"))),
+                 
+                 "historial" = div(class="bg-white p-4 rounded shadow-sm border",
+                                   historyUI(ns("history_mod"))),
+                 
+                 "justificantes" = div(class="bg-white p-4 rounded shadow-sm border",
+                                       certificateUI(ns("justificantes")))
           )
       )
     })
     
-    # 5. CONFIGURACIÓN CRÍTICA: Forzar renderizado inmediato
-    # Esto evita que el contenido "desaparezca" al loguear por primera vez
     outputOptions(output, "tab_content", suspendWhenHidden = FALSE)
     outputOptions(output, "dynamic_menu_items", suspendWhenHidden = FALSE)
     
-    # 6. Inicialización de sub-módulos
+    # ---------------- MÓDULOS ----------------
     profileServer("profile_mod", pool, current_user)
     userManagementServer("create_user_mod", pool, current_user)
     contactManagementServer("contact_mod", pool)
     appointmentServer("appointment_mod", pool, current_user)
+    historyServer("history_mod", pool, current_user, active_tab) 
+    certificateServer("justificantes",pool,current_user)
     
-    # Logout
+    # ---------------- LOGOUT ----------------
     observeEvent(input$btn_logout, {
       user_logged(FALSE)
       current_user(NULL)
+      active_tab(NULL) 
     })
+    
   })
 }
