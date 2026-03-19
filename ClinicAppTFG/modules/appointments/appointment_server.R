@@ -258,20 +258,28 @@ appointmentServer <- function(id, pool, current_user){
                       # --- SOLICITUD CAMBIO ---
                       if(cita_futura) {
                         div(id = ns("seccion_solicitud"),
-                            class = "mt-4 p-3 bg-light rounded border",
+                            class = "mt-4 p-4 bg-light rounded border text-center",
                             
                             tags$h5(class="text-muted mb-3",
                                     "¿Necesitas cambiar o anular esta cita?"),
                             
-                            textAreaInput(ns("motivo_cambio"),
-                                          "Explica tu necesidad:",
-                                          placeholder = "Ej: No puedo asistir, cambiar a la tarde...",
-                                          rows = 3),
-                            
-                            actionButton(ns("btn_enviar_solicitud"),
-                                         "Enviar solicitud a recepción",
-                                         class = "btn-orange-pastel",
-                                         icon = icon("paper-plane"))
+                            div(style="max-width: 500px; margin: 0 auto;",
+                                
+                                tags$label("Explica tu necesidad:", class="fw-bold mb-2"),
+                                
+                                textAreaInput(ns("motivo_cambio"),
+                                              label = NULL,
+                                              placeholder = "Ej: No puedo asistir, cambiar a la tarde...",
+                                              rows = 3,
+                                              width = "100%"),
+                                
+                                div(class="mt-3 d-flex justify-content-center",
+                                    actionButton(ns("btn_enviar_solicitud"),
+                                                 "Enviar solicitud a recepción",
+                                                 class = "btn-orange-pastel",
+                                                 icon = icon("paper-plane"))
+                                )
+                            )
                         )
                       } else {
                         div(class = "alert alert-info mt-4 mx-auto",
@@ -292,13 +300,28 @@ appointmentServer <- function(id, pool, current_user){
               
               div(class="p-3",
                   
-                  tags$h5(class="fw-bold mb-3",
-                          "Evolución y Notas Clínicas"),
-                  
-                  textAreaInput(ns("observaciones"),
-                                "Notas de la sesión",
-                                value = if(!is.null(datos_cita)) datos_cita$observaciones else "",
-                                rows = 12)
+                  div(style="max-width: 450px; margin: 0 auto;",
+                      
+                      div(style="
+              color: #3f51b5;
+              font-weight: 600;
+              font-size: 14px;
+              margin-bottom: 6px;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            ",
+                          icon("notes-medical"),
+                          "Anotación clínica"
+                      ),
+                      
+                      textAreaInput(ns("observaciones"),
+                                    label = NULL,
+                                    value = if(!is.null(datos_cita)) datos_cita$observaciones else "",
+                                    rows = 6,
+                                    width = "100%",
+                                    placeholder = "Ej: Evolución favorable del paciente...")
+                  )
               )
               
               # -------- STAFF (CREAR / EDITAR) --------
@@ -430,7 +453,7 @@ appointmentServer <- function(id, pool, current_user){
                           "1"="#7e57c2", "2"="#26a69a", "3"="#ffa726", "#26a69a")
       
       # ========================
-      # 💾 USAR MISMA CONEXIÓN (CLAVE)
+      #  USAR MISMA CONEXIÓN (CLAVE)
       # ========================
       con <- pool::poolCheckout(pool)
       on.exit(pool::poolReturn(con), add = TRUE)
@@ -457,12 +480,11 @@ appointmentServer <- function(id, pool, current_user){
                                        ts_str, te_str, input$servicio, color_hex)
           )
           
-          # 🔑 MISMA CONEXIÓN → seguro
           rv$cita_id <- DBI::dbGetQuery(con, "SELECT LAST_INSERT_ID() as id")$id
         }
         
         # ========================
-        # 📧 EMAIL (NO BLOQUEANTE)
+        # EMAIL
         # ========================
         info_paciente <- DBI::dbGetQuery(con, "
       SELECT u.email, u.nombre 
@@ -472,26 +494,40 @@ appointmentServer <- function(id, pool, current_user){
                                          params = list(rv$cita_id)
         )
         
+        estado_db <- DBI::dbGetQuery(con,
+                                     "SELECT estado FROM citas WHERE id = ?",
+                                     params = list(rv$cita_id)
+        )$estado[1]
+        
+        mensaje_estado <- switch(estado_db,
+                                 "cancelada" = "ha sido CANCELADA ❌",
+                                 "completada" = "ha sido completada ✔",
+                                 "programada" = if (rv$edit_mode) "ha sido MODIFICADA ✏️" else "ha sido PROGRAMADA 📅",
+                                 "ha sido actualizada"
+        )
+        
         if (nrow(info_paciente) > 0 && !is.null(info_paciente$email)) {
           
-          # ⚡ envío en segundo plano
-          later::later(function() {
-            try({
+            tryCatch({
+              
               email_msg <- envelope() %>%
                 from("clinicapptfg@gmail.com") %>%
                 to(info_paciente$email) %>%
                 subject("Actualización de su Cita - ClinicApp") %>%
                 text(paste0(
                   "Hola ", info_paciente$nombre, ",\n\n",
-                  "Su cita ha sido guardada/modificada.\n",
+                  "Su cita ", mensaje_estado, ".\n",
                   "Fecha: ", format(as.POSIXct(ts_str), "%d/%m/%Y a las %H:%M"), "\n\n",
                   "Gracias por confiar en nosotros."
                 ))
               
               smtp_server(email_msg)
               
-            }, silent = TRUE)
-          }, delay = 0)
+              print(paste("EMAIL ENVIADO A:", info_paciente$email))
+              
+            }, error = function(e) {
+              print(paste("ERROR EMAIL:", e$message))
+            })
         }
         
         # --- UI ---
@@ -513,10 +549,78 @@ appointmentServer <- function(id, pool, current_user){
     
     observeEvent(input$btn_confirmar_si, {
       u <- get_user()
+      
       if (u$tipo_usuario %in% c('admin', 'recepcion')) {
-        DBI::dbExecute(pool, "UPDATE citas SET estado='cancelada' WHERE id=?", params = list(rv$cita_id))
-        showNotification("Cita eliminada.", type = "warning")
-        limpiar_todo(); refresh(refresh() + 1)
+        
+        # ========================
+        # CONEXIÓN
+        # ========================
+        con <- pool::poolCheckout(pool)
+        on.exit(pool::poolReturn(con), add = TRUE)
+        
+        tryCatch({
+          
+          # --- CANCELAR CITA ---
+          DBI::dbExecute(con, 
+                         "UPDATE citas SET estado='cancelada' WHERE id=?", 
+                         params = list(rv$cita_id))
+          
+          # ========================
+          # OBTENER DATOS PACIENTE
+          # ========================
+          info_paciente <- DBI::dbGetQuery(con, "
+        SELECT u.email, u.nombre, c.fecha_inicio
+        FROM citas c 
+        JOIN usuarios u ON c.paciente_id = u.id 
+        WHERE c.id = ?", 
+                                           params = list(rv$cita_id)
+          )
+          
+          # ========================
+          #  ENVIAR EMAIL
+          # ========================
+          if (nrow(info_paciente) > 0 && 
+              !is.na(info_paciente$email) && 
+              info_paciente$email != "") {
+            
+            tryCatch({
+              
+              fecha_txt <- format(
+                as.POSIXct(info_paciente$fecha_inicio, tz = "Europe/Madrid"),
+                "%d/%m/%Y a las %H:%M"
+              )
+              
+              email_msg <- envelope() %>%
+                from("clinicapptfg@gmail.com") %>%
+                to(info_paciente$email) %>%
+                subject("Cancelación de su Cita - ClinicApp") %>%
+                text(paste0(
+                  "Hola ", info_paciente$nombre, ",\n\n",
+                  "Le informamos que su cita ha sido CANCELADA ❌.\n\n",
+                  "Fecha original: ", fecha_txt, "\n\n",
+                  "Si desea reprogramarla, no dude en contactarnos.\n\n",
+                  "Un saludo,\nClinicApp"
+                ))
+              
+              smtp_server(email_msg)
+              
+              print(paste("EMAIL CANCELACIÓN ENVIADO A:", info_paciente$email))
+              
+            }, error = function(e) {
+              print(paste("ERROR EMAIL CANCELACIÓN:", e$message))
+            })
+          }
+          
+          # ========================
+          # UI
+          # ========================
+          showNotification("Cita cancelada.", type = "warning")
+          limpiar_todo()
+          refresh(refresh() + 1)
+          
+        }, error = function(e) {
+          showNotification(paste("Error:", e$message), type = "error")
+        })
       }
     })
     

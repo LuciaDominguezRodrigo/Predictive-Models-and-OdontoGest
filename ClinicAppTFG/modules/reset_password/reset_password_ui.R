@@ -57,9 +57,18 @@ resetPasswordUI <- function(id) {
           actionButton(
             ns("btn_reset"),
             span(id = ns("btn_label"), "Enviar enlace"),
-            class = "btn btn-primary btn-block",
-            style = "background-color: #6a0dad; border: none; height: 55px; border-radius: 15px; 
-                     font-size: 1.2rem; font-weight: 700; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(106, 13, 173, 0.2);"
+            class = "btn btn-primary",
+            style = "
+                background-color: #6a0dad; 
+                border: none; 
+                height: 50px; 
+                width: 100%; 
+                border-radius: 15px; 
+                font-size: 1.1rem; 
+                font-weight: 700; 
+                transition: all 0.2s; 
+                box-shadow: 0 4px 15px rgba(106, 13, 173, 0.2);
+            "
           ),
           
           div(

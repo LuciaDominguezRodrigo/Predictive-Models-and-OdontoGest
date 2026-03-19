@@ -209,7 +209,7 @@ insert_nota_clinica <- function(paciente_id, profesional_id, contenido, fecha = 
 # -----------------------------
 if (RESET_DB) {
   # Administrador con su foto específica
-  insert_user("admin", "Administrador", "1234", "lucia.dominguez.rodrigo@gmail.com", 
+  insert_user("admin", "Administrador", "1234", "lucia@gmail.com", 
               "123456789", "admin", foto_nombre_archivo = "default_admin.png")
   
   # Recepcionista con su foto
