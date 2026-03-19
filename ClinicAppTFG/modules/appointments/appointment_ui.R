@@ -82,7 +82,8 @@ appointmentUI <- function(id){
           style = "height: 650px; overflow: hidden;",  
           
           calendarOutput(ns("cal"), height = "100%")
-        )
+        ), 
+        uiOutput(ns("lista_solicitudes_pendientes"))
     )
   )
 }

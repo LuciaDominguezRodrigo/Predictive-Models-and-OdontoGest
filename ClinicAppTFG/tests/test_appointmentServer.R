@@ -20,7 +20,7 @@ source("../modules/appointments/appointment_server.R")
 
 # 3. OBJETOS MOCK --------------------------------------------------------------
 fake_conn <- structure(list(), class = "DBIConnection")
-
+fake_pool <- structure(list(), class = c("Pool", "R6"))
 user_session_staff <- reactiveVal(list(id = 1, tipo_usuario = "recepcion", nombre = "Admin Test"))
 user_session_paciente <- reactiveVal(list(id = 10, tipo_usuario = "paciente", nombre = "Juan Paciente"))
 
@@ -49,6 +49,12 @@ describe("Módulo Appointment Server", {
   test_that("Personal de recepción puede guardar una cita nueva", {
     m_execute <- mock(1) 
     m_notify  <- mock()
+    
+    # --- FIX AQUÍ ---
+    stub(appointmentServer, "pool::poolCheckout", fake_conn)
+    stub(appointmentServer, "pool::poolReturn", function(...) NULL)
+    # ----------------
+    
     stub(appointmentServer, "DBI::dbExecute", m_execute)
     stub(appointmentServer, "showNotification", m_notify)
     stub(appointmentServer, "removeModal", function() NULL)
@@ -172,6 +178,12 @@ describe("Módulo Appointment Server", {
   # 3. TEST LIMPIEZA JS (CORREGIDO)
   test_that("Se ejecuta la limpieza de JS al guardar", {
     m_js <- mock()
+    
+    # --- FIX: Añadir stubs para el Pool ---
+    stub(appointmentServer, "pool::poolCheckout", fake_conn)
+    stub(appointmentServer, "pool::poolReturn", function(...) NULL)
+    # --------------------------------------
+    
     stub(appointmentServer, "shinyjs::runjs", m_js)
     stub(appointmentServer, "removeModal", function() NULL)
     stub(appointmentServer, "showNotification", function(...) NULL)
@@ -183,13 +195,20 @@ describe("Módulo Appointment Server", {
     
     testServer(appointmentServer, args = list(pool = fake_conn, current_user = user_session_staff), {
       session$setInputs(
-        fecha_cita = Sys.Date(), hora_inicio = "10:00", duracion = 30,
-        paciente = 1, doctor = 1, gabinete = 1, servicio = "Test",
-        guardar = 1
+        fecha_cita = Sys.Date(), 
+        hora_inicio = "10:00", 
+        duracion = 30,
+        paciente = 1, 
+        doctor = 1, 
+        gabinete = 1, 
+        servicio = "Test",
+        guardar = 1 # Esto dispara el observeEvent
       )
       session$flushReact()
       
+      # Ahora m_js debería haber sido llamado porque el código no se rompió en el pool
       expect_called(m_js, 1)
     })
   })
+
 })

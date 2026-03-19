@@ -111,6 +111,19 @@ CREATE TABLE IF NOT EXISTS contacto (
 ) DEFAULT CHARSET = utf8mb4;
 ")
 
+dbExecute(pool,
+  "CREATE TABLE solicitudes_citas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cita_id INT,
+    paciente_id INT,
+    motivo TEXT,
+    fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    leido BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE CASCADE
+);"        
+          
+          )
+
 # -----------------------------
 #  Funciones para insertar datos iniciales
 # -----------------------------
@@ -211,7 +224,7 @@ if (RESET_DB) {
               "555123456", "higienista", foto_nombre_archivo = "default_doctor.png")
   
   # Usuario genérico (usará default_user.png por defecto según la función)
-  insert_user("paciente1", "Juan Sin Foto", "1234", "juan@correo.com", "000000000", "paciente")
+  insert_user("paciente1", "Juan Sin Foto", "1234", "lucia.dominguez.rodrigo@gmail.com", "000000000", "paciente")
   
   message("Base de datos inicializada con éxito y fotos BLOB cargadas.")
   insert_paciente("Juan Pérez", "juan@correo.com", "600111222", "1985-04-12")

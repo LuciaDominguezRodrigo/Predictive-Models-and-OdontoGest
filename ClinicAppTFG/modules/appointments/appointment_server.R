@@ -1,5 +1,7 @@
 library(toastui)
 library(shinyWidgets)
+library(emayili)
+
 
 appointmentServer <- function(id, pool, current_user){
   
@@ -16,6 +18,14 @@ appointmentServer <- function(id, pool, current_user){
     rv <- reactiveValues(
       cita_id = NULL,
       edit_mode = FALSE
+    )
+    
+    # --- 1. CONFIGURACIÓN SMTP ---
+    smtp_server <- server(
+      host = "smtp.gmail.com",
+      port = 465,
+      username = "clinicapptfg@gmail.com",
+      password = "qffj vlrz kmzq jpwz"
     )
     
     # --- FUNCIÓN DE LIMPIEZA ---
@@ -172,169 +182,327 @@ appointmentServer <- function(id, pool, current_user){
     })
     
     # ---------------- 4. FORMULARIO DINÁMICO (MODAL) ----------------
+    
     abrir_form <- function(mode = "new") {
       rv$edit_mode <- (mode == "edit")
       u <- get_user()
+      
+      # --- INICIALIZACIÓN ---
       cita_pasada <- FALSE
+      cita_futura <- FALSE
       datos_cita <- NULL
       
-      # 1. Recuperar datos de la cita si es edición
+      # --- 1. RECUPERAR DATOS SI ES EDICIÓN ---
       if (rv$edit_mode && !is.null(rv$cita_id)) {
-        datos_cita <- DBI::dbGetQuery(pool, "SELECT * FROM citas WHERE id = ?", params = list(rv$cita_id))
-        if (nrow(datos_cita) > 0) {
-          cita_pasada <- as.POSIXct(as.character(datos_cita$fecha_fin), tz = "Europe/Madrid") < Sys.time()
+        datos_cita <- DBI::dbGetQuery(pool, 
+                                      "SELECT * FROM citas WHERE id = ?", 
+                                      params = list(rv$cita_id))
+        
+        if (!is.null(datos_cita) && nrow(datos_cita) > 0) {
+          fecha_f <- as.POSIXct(as.character(datos_cita$fecha_fin), tz = "Europe/Madrid")
+          fecha_i <- as.POSIXct(as.character(datos_cita$fecha_inicio), tz = "Europe/Madrid")
+          ahora   <- Sys.time()
+          
+          cita_pasada <- fecha_f < ahora
+          cita_futura <- fecha_i > ahora
         }
       }
       
-      # 2. Cargar listados para personal (doctor/recepción)
-      pac <- DBI::dbGetQuery(pool, "SELECT id, nombre FROM usuarios WHERE tipo_usuario='paciente' ORDER BY nombre")
-      doc <- DBI::dbGetQuery(pool, "SELECT id, nombre FROM usuarios WHERE tipo_usuario IN ('doctor','higienista') ORDER BY nombre")
+      # --- 2. LISTADOS ---
+      pac <- DBI::dbGetQuery(pool, 
+                             "SELECT id, nombre FROM usuarios WHERE tipo_usuario='paciente' ORDER BY nombre")
       
+      doc <- DBI::dbGetQuery(pool, 
+                             "SELECT id, nombre FROM usuarios WHERE tipo_usuario IN ('doctor','higienista') ORDER BY nombre")
+      
+      # --- 3. MODAL ---
       showModal(modalDialog(
-        title = span(icon("calendar-check"), if(u$tipo_usuario == "paciente") " Mis Citas" else if(cita_pasada) " Historial de Cita" else " Gestión de Cita"),
-        size = "l", 
+        title = span(icon("calendar-check"), 
+                     if(u$tipo_usuario == "paciente") " Detalle de mi Cita" 
+                     else if(cita_pasada) " Historial de Cita" 
+                     else " Gestión de Cita"),
+        size = "l",
         
-        # CONTENEDOR PRINCIPAL
+        # ================= CAPA PRINCIPAL =================
         div(id = ns("capa_principal"),
+            
+            # -------- PACIENTE --------
             if (u$tipo_usuario == "paciente") {
-              # --- VISTA PARA PACIENTES (RESUMEN SENCILLO) ---
+              
               div(class = "p-4 text-center",
+                  
                   div(class = "mb-3", icon("calendar-day", class = "fa-4x text-purple")),
                   tags$h3("Resumen de tu Cita"),
                   hr(),
-                  tags$p(class="lead", "Tienes una cita programada para el:"),
-                  tags$h4(class="fw-bold text-primary", format(as.Date(datos_cita$fecha_inicio), "%d de %B, %Y")),
-                  tags$div(class="my-3",
-                           tags$span(class="h5", icon("clock"), " Hora: ", tags$span(class="badge bg-dark", format(as.POSIXct(datos_cita$fecha_inicio), "%H:%M")))
-                  ),
-                  tags$p(style="font-size: 1.1rem;", icon("user-md"), " Profesional: ", tags$strong(doc$nombre[doc$id == datos_cita$profesional_id])),
-                  tags$p(style="font-size: 1.1rem;", icon("stethoscope"), " Tratamiento: ", tags$strong(datos_cita$tipo_servicio)),
-                  div(class = "alert alert-info mt-4 mx-auto", style="max-width: 400px;",
-                      icon("info-circle"), " Recuerda acudir con puntualidad.")
+                  
+                  if(!is.null(datos_cita) && nrow(datos_cita) > 0) {
+                    
+                    tagList(
+                      tags$p(class="lead", "Tu cita está programada para el:"),
+                      
+                      tags$h4(class="fw-bold text-primary",
+                              format(as.Date(datos_cita$fecha_inicio), "%d de %B, %Y")),
+                      
+                      tags$div(class="my-3",
+                               tags$span(class="h5", icon("clock"), " Hora: ",
+                                         tags$span(class="badge bg-dark",
+                                                   format(as.POSIXct(as.character(datos_cita$fecha_inicio)), "%H:%M")))
+                      ),
+                      
+                      tags$p(style="font-size: 1.1rem;", icon("user-md"), " Profesional: ",
+                             tags$strong(doc$nombre[doc$id == datos_cita$profesional_id])),
+                      
+                      tags$p(style="font-size: 1.1rem;", icon("stethoscope"), " Tratamiento: ",
+                             tags$strong(datos_cita$tipo_servicio)),
+                      
+                      # --- SOLICITUD CAMBIO ---
+                      if(cita_futura) {
+                        div(id = ns("seccion_solicitud"),
+                            class = "mt-4 p-3 bg-light rounded border",
+                            
+                            tags$h5(class="text-muted mb-3",
+                                    "¿Necesitas cambiar o anular esta cita?"),
+                            
+                            textAreaInput(ns("motivo_cambio"),
+                                          "Explica tu necesidad:",
+                                          placeholder = "Ej: No puedo asistir, cambiar a la tarde...",
+                                          rows = 3),
+                            
+                            actionButton(ns("btn_enviar_solicitud"),
+                                         "Enviar solicitud a recepción",
+                                         class = "btn-orange-pastel",
+                                         icon = icon("paper-plane"))
+                        )
+                      } else {
+                        div(class = "alert alert-info mt-4 mx-auto",
+                            style="max-width: 400px;",
+                            icon("info-circle"),
+                            " Esta cita ya ha pasado.")
+                      }
+                    )
+                    
+                  } else {
+                    div(class="alert alert-danger",
+                        "No se han podido cargar los datos de la cita.")
+                  }
               )
               
+              # -------- HISTORIAL --------
             } else if (cita_pasada) {
-              # --- VISTA HISTORIAL (SOLO OBSERVACIONES PARA DOCTORES) ---
+              
               div(class="p-3",
-                  tags$h5(class="fw-bold mb-3", "Evolución y Notas Clínicas"),
-                  textAreaInput(ns("observaciones"), "Observaciones Médicas / Notas de la sesión", 
-                                value = if(!is.null(datos_cita)) datos_cita$observaciones else "", 
-                                rows = 12, placeholder = "Escribe aquí los detalles del tratamiento realizado...")
+                  
+                  tags$h5(class="fw-bold mb-3",
+                          "Evolución y Notas Clínicas"),
+                  
+                  textAreaInput(ns("observaciones"),
+                                "Notas de la sesión",
+                                value = if(!is.null(datos_cita)) datos_cita$observaciones else "",
+                                rows = 12)
               )
               
+              # -------- STAFF (CREAR / EDITAR) --------
             } else {
-              # --- VISTA EDICIÓN/NUEVA (RECEPCIÓN Y ADMIN) ---
-              div(class = "row g-4", 
+              
+              div(class = "row g-4",
+                  
+                  # ---- FORMULARIO ----
                   div(class = "col-md-7",
-                      div(class="px-2",
-                          selectInput(ns("paciente"), "Paciente", 
-                                      choices = setNames(pac$id, pac$nombre), 
-                                      selected = if(!is.null(datos_cita)) datos_cita$paciente_id else NULL, 
-                                      width = "100%"),
-                          selectInput(ns("doctor"), "Profesional a cargo", 
-                                      choices = setNames(doc$id, doc$nombre), 
-                                      selected = if(!is.null(datos_cita)) datos_cita$profesional_id else NULL,
-                                      width = "100%"),
-                          hr(class="my-4"),
-                          div(class="row",
-                              div(class="col-4", numericInput(ns("gabinete"), "Gabinete", value = if(!is.null(datos_cita)) datos_cita$gabinete else 1, min=1, max=3)),
-                              div(class="col-8", textInput(ns("servicio"), "Tratamiento / Servicio", value = if(!is.null(datos_cita)) datos_cita$tipo_servicio else ""))
-                          ),
-                          div(class="row mt-2",
-                              div(class="col-6", dateInput(ns("fecha_cita"), "Fecha prevista", value = if(!is.null(datos_cita)) as.Date(datos_cita$fecha_inicio) else Sys.Date())),
-                              div(class="col-6", numericInput(ns("duracion"), "Duración estimada (min)", value = 30, step=15))
-                          ),
-                          uiOutput(ns("horas_disponibles")),
-                          uiOutput(ns("feedback_solape"))
-                      )
+                      
+                      selectInput(ns("paciente"), "Paciente",
+                                  choices = setNames(pac$id, pac$nombre),
+                                  selected = if(!is.null(datos_cita)) datos_cita$paciente_id else NULL),
+                      
+                      selectInput(ns("doctor"), "Profesional",
+                                  choices = setNames(doc$id, doc$nombre),
+                                  selected = if(!is.null(datos_cita)) datos_cita$profesional_id else NULL),
+                      
+                      div(class="row",
+                          div(class="col-4",
+                              numericInput(ns("gabinete"), "Gab.",
+                                           value = if(!is.null(datos_cita)) datos_cita$gabinete else 1,
+                                           min=1, max=3)),
+                          
+                          div(class="col-8",
+                              textInput(ns("servicio"), "Servicio",
+                                        value = if(!is.null(datos_cita)) datos_cita$tipo_servicio else ""))
+                      ),
+                      
+                      dateInput(ns("fecha_cita"), "Fecha",
+                                value = if(!is.null(datos_cita)) as.Date(datos_cita$fecha_inicio) else Sys.Date()),
+                      
+                      uiOutput(ns("horas_disponibles")),
+                      
+                      numericInput(ns("duracion"), "Duración (min)",
+                                   value = 30, step=15),
+                      
+                      uiOutput(ns("feedback_solape"))
                   ),
+                  
+                  # ---- DISPONIBILIDAD ----
                   div(class = "col-md-5",
-                      div(class = "bg-light p-3 rounded-3 border h-100",
-                          tags$h6(class="fw-bold mb-3 text-purple", icon("clock"), "Estado del Gabinete"),
-                          div(style = "max-height: 450px; overflow-y: auto;",
-                              tableOutput(ns("tabla_disponibilidad"))
-                          )
+                      div(class = "bg-light p-3 border h-100",
+                          tableOutput(ns("tabla_disponibilidad"))
                       )
                   )
               )
             }
         ),
         
-        # CAPA DE CANCELACIÓN (OCULTA POR DEFECTO)
+        # ================= CAPA CANCELACIÓN =================
         shinyjs::hidden(
-          div(id = ns("capa_cancelacion"), class = "p-5 text-center",
+          div(id = ns("capa_cancelacion"),
+              class = "p-5 text-center",
+              
               icon("trash-alt", class = "text-danger fa-4x mb-3"),
               tags$h3("¿Anular esta cita?"),
-              tags$p(class="text-muted", "Esta acción eliminará la cita del calendario y liberará el gabinete."),
-              hr(),
-              div(class="d-flex justify-content-center gap-3",
-                  actionButton(ns("btn_confirmar_si"), "Sí, Anular Cita", class = "btn-orange-pastel"),
-                  actionButton(ns("btn_confirmar_no"), "No, Mantenerla", class = "btn-dark-custom")
-              )
+              
+              actionButton(ns("btn_confirmar_si"),
+                           "Sí, Anular",
+                           class = "btn-orange-pastel"),
+              
+              actionButton(ns("btn_confirmar_no"),
+                           "No",
+                           class = "btn-dark-custom")
           )
         ),
         
+        # ================= FOOTER =================
         footer = tagList(
           div(id = ns("footer_normal"),
-              # Botón Cerrar (Negro)
-              actionButton(ns("btn_cerrar_modal"), "Cerrar", class = "btn-dark-custom", 
-                           onclick = sprintf("Shiny.setInputValue('%s', Math.random())", ns("close_modal"))),
               
-              # Acciones según usuario (No se muestran al paciente)
+              actionButton(ns("btn_cerrar_modal"),
+                           "Cerrar",
+                           class = "btn-dark-custom",
+                           onclick = sprintf(
+                             "Shiny.setInputValue('%s', Math.random())",
+                             ns("close_modal"))
+              ),
+              
               if (u$tipo_usuario != "paciente") {
                 tagList(
-                  if (cita_pasada && u$tipo_usuario %in% c("admin", "doctor", "higienista"))
-                    actionButton(ns("btn_finalizar"), "Guardar Cambios", class = "btn-purple"),
+                  if (cita_pasada)
+                    actionButton(ns("btn_finalizar"),
+                                 "Guardar Historial",
+                                 class = "btn-purple"),
                   
-                  if (!cita_pasada && u$tipo_usuario %in% c("admin", "recepcion"))
-                    actionButton(ns("guardar"), "Confirmar Cita", class = "btn-purple"),
+                  if (!cita_pasada)
+                    actionButton(ns("guardar"),
+                                 "Confirmar Cita",
+                                 class = "btn-purple"),
                   
-                  if (!cita_pasada && rv$edit_mode && u$tipo_usuario %in% c("admin", "recepcion"))
-                    actionButton(ns("btn_cancelar_inicio"), "Anular Cita", class = "btn-orange-pastel")
+                  if (!cita_pasada && rv$edit_mode)
+                    actionButton(ns("btn_cancelar_inicio"),
+                                 "Anular",
+                                 class = "btn-orange-pastel")
                 )
               }
           )
         )
       ))
-      
-      # Bloqueo de edición para profesionales en citas futuras
-      if (u$tipo_usuario %in% c("doctor", "higienista") && !cita_pasada) {
-        shinyjs::disable("capa_principal")
-      }
-    }    # ---------------- 5. EVENTOS DE BASE DE DATOS ----------------
+    }
     
     observeEvent(input$close_modal, {
       removeModal()
     })
+    
     observeEvent(input$guardar, {
       u <- get_user()
       if (!u$tipo_usuario %in% c('admin', 'recepcion')) return()
       
       req(input$fecha_cita, input$hora_inicio)
+      
+      # --- FECHAS ---
       t_start <- as.POSIXct(paste(input$fecha_cita, input$hora_inicio), tz = "Europe/Madrid")
       t_end   <- t_start + (input$duracion * 60)
       
       ts_str <- format(t_start, "%Y-%m-%d %H:%M:%S")
       te_str <- format(t_end, "%Y-%m-%d %H:%M:%S")
       
-      if (check_solape(ts_str, te_str, input$gabinete, input$doctor, if(rv$edit_mode) rv$cita_id else NULL)) {
+      # --- VALIDACIÓN SOLAPE ---
+      if (check_solape(ts_str, te_str, input$gabinete, input$doctor,
+                       if (rv$edit_mode) rv$cita_id else NULL)) {
         showNotification("Error: Conflicto de horario.", type = "error")
         return()
       }
       
-      color_hex <- switch(as.character(input$gabinete), "1"="#7e57c2", "2"="#26a69a", "3"="#ffa726", "#26a69a")
+      color_hex <- switch(as.character(input$gabinete),
+                          "1"="#7e57c2", "2"="#26a69a", "3"="#ffa726", "#26a69a")
       
-      if (rv$edit_mode) {
-        DBI::dbExecute(pool, "UPDATE citas SET paciente_id=?, profesional_id=?, gabinete=?, fecha_inicio=?, fecha_fin=?, tipo_servicio=?, color=? WHERE id=?",
-                       params = list(input$paciente, input$doctor, input$gabinete, ts_str, te_str, input$servicio, color_hex, rv$cita_id))
-      } else {
-        DBI::dbExecute(pool, "INSERT INTO citas (paciente_id, profesional_id, gabinete, fecha_inicio, fecha_fin, tipo_servicio, color, estado) VALUES (?,?,?,?,?,?,?, 'programada')",
-                       params = list(input$paciente, input$doctor, input$gabinete, ts_str, te_str, input$servicio, color_hex))
-      }
-      showNotification("Cita procesada correctamente.")
-      limpiar_todo(); refresh(refresh() + 1)
-    })
-    
+      # ========================
+      # 💾 USAR MISMA CONEXIÓN (CLAVE)
+      # ========================
+      con <- pool::poolCheckout(pool)
+      on.exit(pool::poolReturn(con), add = TRUE)
+      
+      tryCatch({
+        
+        # --- INSERT / UPDATE ---
+        if (rv$edit_mode) {
+          
+          DBI::dbExecute(con,
+                         "UPDATE citas 
+         SET paciente_id=?, profesional_id=?, gabinete=?, fecha_inicio=?, fecha_fin=?, tipo_servicio=?, color=? 
+         WHERE id=?",
+                         params = list(input$paciente, input$doctor, input$gabinete,
+                                       ts_str, te_str, input$servicio, color_hex, rv$cita_id)
+          )
+          
+        } else {
+          
+          DBI::dbExecute(con,
+                         "INSERT INTO citas (paciente_id, profesional_id, gabinete, fecha_inicio, fecha_fin, tipo_servicio, color, estado) 
+         VALUES (?,?,?,?,?,?,?, 'programada')",
+                         params = list(input$paciente, input$doctor, input$gabinete,
+                                       ts_str, te_str, input$servicio, color_hex)
+          )
+          
+          # 🔑 MISMA CONEXIÓN → seguro
+          rv$cita_id <- DBI::dbGetQuery(con, "SELECT LAST_INSERT_ID() as id")$id
+        }
+        
+        # ========================
+        # 📧 EMAIL (NO BLOQUEANTE)
+        # ========================
+        info_paciente <- DBI::dbGetQuery(con, "
+      SELECT u.email, u.nombre 
+      FROM citas c 
+      JOIN usuarios u ON c.paciente_id = u.id 
+      WHERE c.id = ?", 
+                                         params = list(rv$cita_id)
+        )
+        
+        if (nrow(info_paciente) > 0 && !is.null(info_paciente$email)) {
+          
+          # ⚡ envío en segundo plano
+          later::later(function() {
+            try({
+              email_msg <- envelope() %>%
+                from("clinicapptfg@gmail.com") %>%
+                to(info_paciente$email) %>%
+                subject("Actualización de su Cita - ClinicApp") %>%
+                text(paste0(
+                  "Hola ", info_paciente$nombre, ",\n\n",
+                  "Su cita ha sido guardada/modificada.\n",
+                  "Fecha: ", format(as.POSIXct(ts_str), "%d/%m/%Y a las %H:%M"), "\n\n",
+                  "Gracias por confiar en nosotros."
+                ))
+              
+              smtp_server(email_msg)
+              
+            }, silent = TRUE)
+          }, delay = 0)
+        }
+        
+        # --- UI ---
+        showNotification("Cita guardada correctamente.", type = "message")
+        limpiar_todo()
+        refresh(refresh() + 1)
+        
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error")
+      })
+    })    
     observeEvent(input$btn_cancelar_inicio, {
       shinyjs::hide("capa_principal"); shinyjs::hide("footer_normal"); shinyjs::show("capa_cancelacion")
     })
@@ -358,6 +526,106 @@ appointmentServer <- function(id, pool, current_user){
       limpiar_todo(); refresh(refresh() + 1)
     })
     
+    observeEvent(input$archivar_solicitud, {
+      DBI::dbExecute(pool, "UPDATE solicitudes_citas SET leido = TRUE WHERE id = ?", params = list(input$archivar_solicitud))
+      refresh(refresh() + 1)
+    })
+    
+    # --- GUARDAR SOLICITUD DEL PACIENTE ---
+    observeEvent(input$btn_enviar_solicitud, {
+      req(input$motivo_cambio, rv$cita_id)
+      u <- get_user()
+      
+      # Insertamos en la tabla de solicitudes (asegúrate de haber creado la tabla en SQL)
+      tryCatch({
+        DBI::dbExecute(pool, 
+                       "INSERT INTO solicitudes_citas (cita_id, paciente_id, motivo) VALUES (?, ?, ?)",
+                       params = list(rv$cita_id, u$id, input$motivo_cambio)
+        )
+        
+        showNotification("Solicitud enviada con éxito. Recepción la revisará pronto.", type = "message")
+        removeModal() # Cerramos el formulario tras enviar
+        refresh(refresh() + 1) # Refrescamos para que aparezca en la lista de recepción
+      }, error = function(e) {
+        showNotification("Error al enviar solicitud: Verifique la base de datos.", type = "error")
+      })
+    })
+    
+    # --- RENDERIZAR LA LISTA PARA RECEPCIÓN ---
+    output$lista_solicitudes_pendientes <- renderUI({
+      u <- get_user()
+      
+      # VALIDACIÓN DE SEGURIDAD: Si no hay usuario o no es staff, salir
+      if (is.null(u) || is.null(u$tipo_usuario)) return(NULL)
+      if (!(u$tipo_usuario %in% c("admin", "recepcion"))) return(NULL)
+      
+      refresh() # Dependencia reactiva
+      
+      # Traer solicitudes
+      solicitudes <- DBI::dbGetQuery(pool, "
+    SELECT s.*, u.nombre as paciente_nom, c.fecha_inicio 
+    FROM solicitudes_citas s
+    JOIN usuarios u ON s.paciente_id = u.id
+    JOIN citas c ON s.cita_id = c.id
+    WHERE s.leido = FALSE
+    ORDER BY s.fecha_solicitud DESC")
+      
+      # Si la consulta falla o está vacía, no mostrar nada
+      if(is.null(solicitudes) || nrow(solicitudes) == 0) return(NULL)
+      
+      tagList(
+        hr(),
+        h4(class="text-purple mb-3", icon("envelope-open-text"), " Solicitudes de cambio pendientes"),
+        div(class="row",
+            lapply(1:nrow(solicitudes), function(i) {
+              s <- solicitudes[i, ]
+              div(class="col-md-4",
+                  div(class="card mb-3 border-start border-warning border-4 shadow-sm",
+                      div(class="card-body",
+                          tags$h6(class="fw-bold", s$paciente_nom),
+                          tags$p(class="small text-muted mb-2", 
+                                 icon("calendar"), " Cita original: ", format(as.POSIXct(s$fecha_inicio), "%d/%m %H:%M")),
+                          div(class="p-2 bg-light rounded mb-2 small italic", paste0('"', s$motivo, '"')),
+                          
+                          div(class="d-flex gap-2",
+                              actionButton(ns(paste0("gestionar_", s$id)), "Gestionar Cita", 
+                                           class="btn btn-sm btn-purple",
+                                           onclick = sprintf("Shiny.setInputValue('%s', %d, {priority:'event'})", ns("cal_click"), s$cita_id)),
+                              actionButton(ns(paste0("leido_", s$id)), "Archivar", 
+                                           class="btn btn-sm btn-outline-secondary",
+                                           onclick = sprintf("Shiny.setInputValue('%s', %d, {priority:'event'})", ns("marcar_leido"), s$id))
+                          )
+                      )
+                  )
+              )
+            })
+        )
+      )
+    })
+    # --- EVENTO PARA MARCAR COMO LEÍDO ---
+    observeEvent(input$marcar_leido, {
+      req(input$marcar_leido)
+      
+      tryCatch({
+        DBI::dbExecute(pool, "UPDATE solicitudes_citas SET leido = TRUE WHERE id = ?", 
+                       params = list(input$marcar_leido))
+        refresh(refresh() + 1) # Esto forzará que la lista desaparezca
+        showNotification("Solicitud archivada", type = "message")
+      }, error = function(e) {
+        showNotification("Error al archivar", type = "error")
+      })
+    })  
+    
+    observeEvent(input$cal_click, { 
+      req(input$cal_click)
+      
+      id <- if (is.list(input$cal_click)) input$cal_click$id else input$cal_click
+      
+      rv$cita_id <- id
+      abrir_form("edit") 
+    }) 
+    
+    observeEvent(input$crear_manual, { rv$cita_id = NULL; abrir_form("new") })
     # ---------------- 6. UI Y FILTROS ----------------
     output$controles_staff <- renderUI({
       u <- get_user()
@@ -389,7 +657,6 @@ appointmentServer <- function(id, pool, current_user){
       pickerInput(ns("filtro_doctor"), "Doctor", choices = c("Todos" = "0", setNames(docs$id, docs$nombre)), selected = "0")
     })
     
-    observeEvent(input$cal_click, { req(input$cal_click$id); rv$cita_id <- input$cal_click$id; abrir_form("edit") })
-    observeEvent(input$crear_manual, { rv$cita_id = NULL; abrir_form("new") })
+
   })
 }
