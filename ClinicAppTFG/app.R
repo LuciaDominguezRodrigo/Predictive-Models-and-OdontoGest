@@ -62,6 +62,9 @@ source("modules/appointments/appointment_server.R")
 
 source("modules/clinic_history/history_server_module.R")
 source("modules/clinic_history/history_ui_module.R")
+
+source("modules/medical_certificate/medical_certificate_server.R")
+source("modules/medical_certificate/medical_certificate_ui.R")
 # -----------------------------
 # UI principal
 # -----------------------------

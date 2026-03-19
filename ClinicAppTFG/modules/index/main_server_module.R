@@ -41,6 +41,12 @@ mainServer <- function(id, current_user, user_logged, pool) {
         ))
       }
       
+      if (current_user()$tipo_usuario %in% c('paciente')) {
+        opciones <- append(opciones, list(
+          list(id = "justificantes", label = "Mis justificantes")
+        ))
+      }
+      
       lapply(opciones, function(opc) {
         es_activo <- if(!is.null(active_tab()) && active_tab() == opc$id) {
           " active bg-purple-active"
@@ -60,6 +66,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
     observeEvent(input$btn_buzon, { active_tab("buzon") })
     observeEvent(input$btn_citas, { active_tab("citas") })
     observeEvent(input$btn_historial, { active_tab("historial") })
+    observeEvent(input$btn_justificantes, { active_tab("justificantes") })
     
     # ---------------- CONTENIDO ----------------
     output$tab_content <- renderUI({
@@ -84,7 +91,10 @@ mainServer <- function(id, current_user, user_logged, pool) {
                                appointmentUI(ns("appointment_mod"))),
                  
                  "historial" = div(class="bg-white p-4 rounded shadow-sm border",
-                                   historyUI(ns("history_mod")))
+                                   historyUI(ns("history_mod"))),
+                 
+                 "justificantes" = div(class="bg-white p-4 rounded shadow-sm border",
+                                       certificateUI(ns("justificantes")))
           )
       )
     })
@@ -98,6 +108,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
     contactManagementServer("contact_mod", pool)
     appointmentServer("appointment_mod", pool, current_user)
     historyServer("history_mod", pool, current_user, active_tab) 
+    certificateServer("justificantes",pool,current_user)
     
     # ---------------- LOGOUT ----------------
     observeEvent(input$btn_logout, {
