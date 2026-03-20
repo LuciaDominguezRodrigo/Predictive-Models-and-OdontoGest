@@ -26,7 +26,6 @@ source("db_init.R")
 # -----------------------------
 # Módulos
 # -----------------------------
-
 # login
 source("modules/login/login_ui.R")
 source("modules/login/login_server.R")
@@ -65,6 +64,10 @@ source("modules/clinic_history/history_ui_module.R")
 
 source("modules/medical_certificate/medical_certificate_server.R")
 source("modules/medical_certificate/medical_certificate_ui.R")
+
+
+source("modules/lab/lab_server.R")
+source("modules/lab/lab_ui.R")
 # -----------------------------
 # UI principal
 # -----------------------------
