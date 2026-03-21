@@ -158,6 +158,25 @@ CREATE TABLE IF NOT EXISTS historico_stock (
 ) DEFAULT CHARSET = utf8mb4;
 ")
   
+  # --- NUEVA TABLA AMPLIADA PARA ENTRENAMIENTO DE DIAGNÓSTICO IA ---
+  dbExecute(pool, "
+CREATE TABLE IF NOT EXISTS historico_diagnosticos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  paciente_id INT,
+  edad INT,
+  indice_placa INT,           -- % de placa bacteriana
+  sangrado_sondaje INT,       -- % de puntos de sangrado
+  profundidad_bolsa_max INT,  -- mm de la bolsa más profunda
+  es_fumador TINYINT,         -- 0 o 1
+  nivel_glucosa INT,          -- mg/dL (Relación directa con periodontitis)
+  hba1c FLOAT,                -- Hemoglobina glicosilada
+  estres_percibido INT,       -- Escala 1-10 (Factor de riesgo bruxismo/encías)
+  higiene_diaria INT,         -- Veces al día que se cepilla
+  diagnostico_final ENUM('Normal', 'Caries', 'Periodontitis'),
+  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) DEFAULT CHARSET = utf8mb4;
+")
+  
   # -----------------------------
   #  Funciones para insertar datos iniciales
   # -----------------------------
@@ -227,6 +246,48 @@ CREATE TABLE IF NOT EXISTS historico_stock (
   #  Insertar datos iniciales
   # -----------------------------
   if (RESET_DB) {
+    
+    set.seed(456)
+    n_casos <- 800
+    
+    # Generar variables con "ruido" clínico
+    edades <- sample(18:85, n_casos, replace = TRUE)
+    placa <- sample(0:100, n_casos, replace = TRUE)
+    sangrado <- sample(0:100, n_casos, replace = TRUE)
+    bolsas <- sample(1:10, n_casos, replace = TRUE)
+    fumadores <- sample(0:1, n_casos, replace = TRUE)
+    
+    # Nuevas variables
+    glucosa <- rnorm(n_casos, 100, 30) # Media 100, SD 30
+    hba1c <- 4 + (glucosa/40) + rnorm(n_casos, 0, 0.5)
+    estres <- sample(1:10, n_casos, replace = TRUE)
+    higiene <- sample(0:4, n_casos, replace = TRUE)
+    
+    # Lógica de diagnóstico "maestra" para que la IA aprenda:
+    # La periodontitis ahora depende de: bolsa + sangrado + fumador + glucosa alta
+    riesgo_perio <- (bolsas * 1.5) + (sangrado * 0.5) + (fumadores * 10) + (hba1c * 2)
+    
+    diags <- ifelse(riesgo_perio > 25, 'Periodontitis',
+                    ifelse(placa > 50 & higiene < 2, 'Caries', 'Normal'))
+    
+    df_diags <- data.frame(
+      edad = edades,
+      indice_placa = placa,
+      sangrado_sondaje = sangrado,
+      profundidad_bolsa_max = bolsas,
+      es_fumador = fumadores,
+      nivel_glucosa = round(glucosa),
+      hba1c = round(hba1c, 1),
+      estres_percibido = estres,
+      higiene_diaria = higiene,
+      diagnostico_final = diags
+    )
+    
+    dbWriteTable(pool, "historico_diagnosticos", df_diags, append = TRUE, row.names = FALSE)
+    message("Base de datos actualizada: 800 casos clínicos complejos insertados.")
+    
+   
+    
     set.seed(123)
     n_registros <- 1000
     productos_lista <- c(
