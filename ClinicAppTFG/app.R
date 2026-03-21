@@ -16,7 +16,9 @@ library(jsonlite)
 library(bslib)
 library(toastui)
 library(shinyWidgets)
-
+library(xgboost)
+library(caret)
+library(plotly)
 # -----------------------------
 # Config global y base de datos
 # -----------------------------
@@ -72,6 +74,10 @@ source("modules/lab/lab_ui.R")
 source("modules/stock_management/stock_server.R")
 source("modules/stock_management/stock_ui.R")
 source("modules/stock_management/modelo_stock.R")
+
+source("modules/diagnosis/diagnosis_server.R")
+source("modules/diagnosis/diagnosis_ui.R")
+source("modules/diagnosis/model_diagnosis.R")
 
 # UI principal
 # -----------------------------
