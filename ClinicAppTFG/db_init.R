@@ -146,6 +146,18 @@ if (TEST_MODE) {
     FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE CASCADE
   );")
   
+  dbExecute(pool, "
+CREATE TABLE IF NOT EXISTS historico_stock (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  producto VARCHAR(100),
+  fecha DATE,
+  stock_inicio INT,
+  pacientes_atendidos INT,
+  cantidad_usada INT, -- Lo que realmente se gastó
+  pedidos_realizados INT -- Lo que se pidió al proveedor
+) DEFAULT CHARSET = utf8mb4;
+")
+  
   # -----------------------------
   #  Funciones para insertar datos iniciales
   # -----------------------------
@@ -215,28 +227,74 @@ if (TEST_MODE) {
   #  Insertar datos iniciales
   # -----------------------------
   if (RESET_DB) {
-    insert_user("admin", "Administrador", "1234", "lucia@gmail.com", "123456789", "admin", "default_admin.png")
-    insert_user("lab1", "cofares lab", "1234", "lucia@gmail.com", "123456789", "laboratorio", "default_admin.png")
-    insert_user("recepcion1", "Recepcionista", "abcd", "recepcion@clinica.com", "987654321", "recepcion", "default_secretary.png")
-    insert_user("doctor1", "Dr. Pérez Jiménez", "medico1", "drperez@clinica.com", "555123456", "doctor", "default_doctor.png")
-    insert_user("higienista1", "Hg. García Urbanos", "higienista1", "hggarcia@clinica.com", "555123456", "higienista", "default_doctor.png")
-    insert_user("paciente1", "Juan Sin Foto", "1234", "lucia.dominguez@gmail.com", "000000000", "paciente")
+    
+      set.seed(123)
+      n_registros <- 1000
+      productos_lista <- c(
+        "Guantes", "Mascarillas", "Agujas", "cemento", "micro_aplicador",
+        "tetric_evoceram_A2", "tetric_evoceram_A3", "tetric_evoflow_A2",
+        "alginato_fast_bestdent", "silicona_putty", "temp_bond"
+      )
+      
+      # Generamos vectores de datos
+      productos_random <- sample(productos_lista, n_registros, replace = TRUE)
+      stock_in <- sample(50:500, n_registros, replace = TRUE)
+      pacs <- sample(20:80, n_registros, replace = TRUE)
+      ped_realizados <- sample(50:400, n_registros, replace = TRUE)
+      
+      # Lógica: lo necesario suele ser lo pedido + un ajuste por stock bajo (ruido normal)
+      ped_necesarios <- pmax(0, round(ped_realizados + 0.35 * (100 - stock_in) + rnorm(n_registros, 0, 5)))
+      fechas <- seq(as.Date('2023-01-01'), by = "day", length.out = n_registros)
+      
+      # Inserción masiva
+      df_historico <- data.frame(
+        producto = productos_random,
+        fecha = fechas,
+        stock_inicio = stock_in,
+        pacientes_atendidos = pacs,
+        cantidad_usada = ped_necesarios,
+        pedidos_realizados = ped_realizados
+      )
+      
+      dbWriteTable(pool, "historico_stock", df_historico, append = TRUE, row.names = FALSE)
+      message("Tabla 'historico_stock' poblada con 1000 registros para entrenamiento.")
+      
+      # 1. USUARIOS (El orden aquí determina el ID)
+      # ID 1: Admin
+      insert_user("admin", "Administrador", "1234", "lucia@gmail.com", "123456789", "admin")
+      # ID 2: Laboratorio
+      insert_user("lab1", "Cofares Lab", "1234", "lab@cofares.com", "123456789", "laboratorio")
+      # ID 3: El Doctor (Muy importante para citas y notas)
+      insert_user("doctor1", "Dr. Pérez Jiménez", "medico1", "drperez@clinica.com", "555123456", "doctor")
+      # ID 4: Personal
+      insert_user("recepcion1", "Recepcionista", "abcd", "recepcion@clinica.com", "987654321", "recepcion")
+      # ID 5: Paciente principal (Juan)
+      insert_user("paciente1", "Juan Pérez", "1234", "lucia.dominguez.rodrigo@gmail.com", "000000000", "paciente")
+      # ID 6: Segundo paciente (Lucía)
+      insert_user("paciente2", "Lucía Domínguez", "1234", "lucia@gmail.com", "000000000", "paciente")
+    
     
     insert_paciente("Juan Pérez", "juan@correo.com", "600111222", "1985-04-12")
     insert_paciente("María López", "maria@correo.com", "600333444", "1990-09-05")
     insert_tratamiento("Limpieza dental", "Limpieza y pulido de dientes")
     insert_tratamiento("Empaste", "Tratamiento de cavidad dental")
     
-    insert_cita(5, 3, 1, Sys.Date(), "10:00:00", 60, "Limpieza Dental")
-    insert_cita(5, 3, 2, Sys.Date(), "12:00:00", 30, "Revisión General")
+    insert_tratamiento("Limpieza dental", "Limpieza y pulido de dientes")
+    insert_tratamiento("Empaste", "Tratamiento de cavidad dental")
     
-    insert_nota_clinica(5, 3, "El paciente presenta inflamación. Se recomienda limpieza.")
+    # 4. CITAS (Vinculamos Paciente ID 5 con Doctor ID 3)
+    # He puesto fechas de HOY para que aparezcan en el calendario actual
+    insert_cita(5, 3, 1, Sys.Date(), "10:00:00", 60, "Limpieza Dental")
+    insert_cita(6, 3, 2, Sys.Date(), "12:00:00", 30, "Revisión General")
+    
+    # 5. NOTAS CLÍNICAS (Vinculamos Paciente ID 5 con Doctor ID 3)
+    insert_nota_clinica(5, 3, "El paciente presenta inflamación en encías. Se recomienda limpieza profunda.")
+    insert_nota_clinica(6, 3, "Paciente con buena higiene general. Revisión en 6 meses.")
     
     # Pedidos con la nueva función corregida
     insert_pedido_lab(3, 2, "Juan Pérez", "Corona de circonio pieza 46.", tipo = 'protesis')
     insert_pedido_lab(3, 2, "María López", "Férula de descarga.", estado = 'enviado', tipo = 'protesis', empresa = 'MRW', tracking = 'MRW12345')
     insert_pedido_lab(1, 1, "STOCK CLÍNICA", "Pedido Mensual IA: Guantes y Anestesia", tipo = 'material')
-    
-    message("Datos iniciales insertados con éxito.")
+    message(">>> DATOS VINCULADOS CON ÉXITO: Citas, Notas y Usuarios sincronizados.")    
   }
 }

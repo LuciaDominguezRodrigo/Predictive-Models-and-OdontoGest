@@ -7,7 +7,7 @@
 # Librerías
 # -----------------------------
 library(shiny)
-
+library(ggplot2)
 library(DBI)
 library(pool)
 library(bcrypt)
@@ -68,6 +68,11 @@ source("modules/medical_certificate/medical_certificate_ui.R")
 
 source("modules/lab/lab_server.R")
 source("modules/lab/lab_ui.R")
+
+source("modules/stock_management/modelo_stock.R")
+source("modules/stock_management/stock_server.R")
+source("modules/stock_management/stock_ui.R")
+
 # -----------------------------
 # UI principal
 # -----------------------------
