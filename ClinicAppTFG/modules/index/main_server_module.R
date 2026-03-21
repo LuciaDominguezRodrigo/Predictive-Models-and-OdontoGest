@@ -29,6 +29,19 @@ mainServer <- function(id, current_user, user_logged, pool) {
         ))
       }
       
+      # Dentro de output$dynamic_menu_items en main_server_module.R
+      if (current_user()$tipo_usuario == 'laboratorio') {
+        opciones <- append(opciones, list(
+          list(id = "pedidos_lab", label = "Pedidos Pendientes")
+        ))
+      }
+      
+      if (current_user()$tipo_usuario %in% c('admin', 'doctor')) {
+        opciones <- append(opciones, list(
+          list(id = "gestion_lab", label = "Gestión Laboratorios")
+        ))
+      }
+      
       if (current_user()$tipo_usuario %in% c('admin', 'doctor', 'higienista')) {
         opciones <- append(opciones, list(
           list(id = "historial", label = "Historial Clínico")
@@ -44,6 +57,12 @@ mainServer <- function(id, current_user, user_logged, pool) {
       if (current_user()$tipo_usuario %in% c('paciente')) {
         opciones <- append(opciones, list(
           list(id = "justificantes", label = "Mis justificantes")
+        ))
+      }
+      
+      if (current_user()$tipo_usuario %in% c('admin', 'doctor')) {
+        opciones <- append(opciones, list(
+          list(id = "gestion_stock", label = "Stock Inteligente (IA)")
         ))
       }
       
@@ -67,6 +86,9 @@ mainServer <- function(id, current_user, user_logged, pool) {
     observeEvent(input$btn_citas, { active_tab("citas") })
     observeEvent(input$btn_historial, { active_tab("historial") })
     observeEvent(input$btn_justificantes, { active_tab("justificantes") })
+    observeEvent(input$btn_pedidos_lab, { active_tab("pedidos_lab") })
+    observeEvent(input$btn_gestion_lab, { active_tab("gestion_lab") })
+    observeEvent(input$btn_gestion_stock, { active_tab("gestion_stock") })
     
     # ---------------- CONTENIDO ----------------
     output$tab_content <- renderUI({
@@ -94,7 +116,16 @@ mainServer <- function(id, current_user, user_logged, pool) {
                                    historyUI(ns("history_mod"))),
                  
                  "justificantes" = div(class="bg-white p-4 rounded shadow-sm border",
-                                       certificateUI(ns("justificantes")))
+                                       certificateUI(ns("justificantes"))),
+                 
+                 "pedidos_lab"   = div(class="bg-white p-4 rounded shadow-sm border",
+                                       labUI(ns("pedidos_lab"))),
+                 
+                 "gestion_lab"   = div(class="bg-white p-4 rounded shadow-sm border",
+                                       labUI(ns("pedidos_lab"))), 
+                 
+                 "gestion_stock" = div(class="bg-white p-4 rounded shadow-sm border", 
+                                       stockUI(ns("stock_mod")))
           )
       )
     })
@@ -109,6 +140,8 @@ mainServer <- function(id, current_user, user_logged, pool) {
     appointmentServer("appointment_mod", pool, current_user)
     historyServer("history_mod", pool, current_user, active_tab) 
     certificateServer("justificantes",pool,current_user)
+    labServer("pedidos_lab",pool,current_user)
+    stockServer("stock_mod", pool, current_user)
     
     # ---------------- LOGOUT ----------------
     observeEvent(input$btn_logout, {
