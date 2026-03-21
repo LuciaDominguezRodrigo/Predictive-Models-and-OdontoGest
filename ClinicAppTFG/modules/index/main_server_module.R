@@ -60,12 +60,6 @@ mainServer <- function(id, current_user, user_logged, pool) {
         ))
       }
       
-      if (current_user()$tipo_usuario %in% c('admin', 'doctor')) {
-        opciones <- append(opciones, list(
-          list(id = "gestion_stock", label = "Stock Inteligente (IA)")
-        ))
-      }
-      
       lapply(opciones, function(opc) {
         es_activo <- if(!is.null(active_tab()) && active_tab() == opc$id) {
           " active bg-purple-active"
@@ -88,7 +82,6 @@ mainServer <- function(id, current_user, user_logged, pool) {
     observeEvent(input$btn_justificantes, { active_tab("justificantes") })
     observeEvent(input$btn_pedidos_lab, { active_tab("pedidos_lab") })
     observeEvent(input$btn_gestion_lab, { active_tab("gestion_lab") })
-    observeEvent(input$btn_gestion_stock, { active_tab("gestion_stock") })
     
     # ---------------- CONTENIDO ----------------
     output$tab_content <- renderUI({
@@ -122,9 +115,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
                                        labUI(ns("pedidos_lab"))),
                  
                  "gestion_lab"   = div(class="bg-white p-4 rounded shadow-sm border",
-                                       labUI(ns("pedidos_lab"))),
-                 "gestion_stock" = div(class="bg-white p-4 rounded shadow-sm border", 
-                                       stockUI(ns("stock_mod")))
+                                       labUI(ns("pedidos_lab")))
           )
       )
     })
@@ -140,7 +131,6 @@ mainServer <- function(id, current_user, user_logged, pool) {
     historyServer("history_mod", pool, current_user, active_tab) 
     certificateServer("justificantes",pool,current_user)
     labServer("pedidos_lab",pool,current_user)
-    stockServer("stock_mod", pool, current_user)
     
     # ---------------- LOGOUT ----------------
     observeEvent(input$btn_logout, {
@@ -148,10 +138,6 @@ mainServer <- function(id, current_user, user_logged, pool) {
       current_user(NULL)
       active_tab(NULL) 
     })
-    
-    exportTestValues(
-      active_tab = active_tab
-    )
     
   })
 }
