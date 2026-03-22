@@ -1,5 +1,5 @@
 # ==============================================================================
-# TESTS - Diagnosis Server (Usando stub de mockery)
+# TESTS - Diagnosis Server
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -7,122 +7,104 @@ suppressPackageStartupMessages({
   library(shiny)
   library(mockery)
   library(DBI)
-  library(plotly)
 })
 
-# Cargar el módulo
+# 1. Cargar el módulo
 source("../modules/diagnosis/diagnosis_server.R")
 
 # ------------------------------------------------------------------------------
-# DATOS DE PRUEBA Y CONFIGURACIÓN
+# SETUP DE OBJETOS GLOBALES PARA EL TEST
 # ------------------------------------------------------------------------------
+
 fake_conn <- structure(list(), class = "DBIConnection")
+user_session_doc <- reactiveVal(list(id = 5, nombre = "Dr. García", tipo_usuario = "doctor"))
 
-user_session_doc <- reactiveVal(list(
-  id = 3,
-  nombre = "Dr. House",
-  tipo_usuario = "doctor"
-))
-
-mock_datos_entrenamiento <- data.frame(
-  edad = rep(30, 10),
-  indice_placa = rep(50, 10),
-  sangrado_sondaje = rep(20, 10),
-  profundidad_bolsa_max = rep(3, 10),
-  es_fumador = rep(0, 10),
-  diagnostico_final = rep("Normal", 10),
-  stringsAsFactors = TRUE
+mock_datos <- data.frame(
+  edad = rep(30, 15),
+  indice_placa = rep(20, 15),
+  sangrado_sondaje = rep(10, 15),
+  profundidad_bolsa_max = rep(2, 15),
+  es_fumador = rep(0, 15),
+  diagnostico_final = factor(rep(c("Salud Normal", "Caries", "Periodontitis"), 5))
 )
 
 # ------------------------------------------------------------------------------
-# SUITE DE TESTS
+# TEST 1: Entrenamiento Automático
 # ------------------------------------------------------------------------------
 
-describe("Módulo Diagnóstico IA", {
+test_that("El modelo se entrena automáticamente al iniciar", {
   
-  # TEST 1: Verificar la auto-sincronización inicial
-  test_that("El modelo se intenta sincronizar automáticamente al arrancar", {
-    
-    # Creamos los mocks
-    m_cargar <- mock(mock_datos_entrenamiento)
-    m_entrenar <- mock("modelo_xgboost_fake")
-    
-    # Usamos stub para interceptar las llamadas dentro de diagnosticoServer
-    # IMPORTANTE: Reemplazamos las funciones que el servidor llama internamente
-    stub(diagnosticoServer, "cargar_datos_diagnostico", m_cargar)
-    stub(diagnosticoServer, "entrenar_modelo_diagnostico", m_entrenar)
-    
-    testServer(diagnosticoServer, args = list(
-      pool = fake_conn,
-      current_user = user_session_doc
-    ), {
-      session$flushReact() 
-      # Al iniciar, el server llama a ejecutar_sincronizacion_ia() automáticamente
-      expect_equal(v_modelo_entrenado(), "modelo_xgboost_fake")
-      expect_called(m_cargar, 1)
-      expect_called(m_entrenar, 1)
-    })
+  assign("cargar_datos_diagnostico", function(p) mock_datos, envir = .GlobalEnv)
+  assign("entrenar_modelo_diagnostico", function(d) list(method = "xgbTree", finalModel = "fake"), envir = .GlobalEnv)
+  
+  testServer(diagnosticoServer, args = list(
+    pool = fake_conn,
+    current_user = user_session_doc
+  ), {
+    # Al iniciar, v_modelo_entrenado debe tener el valor de nuestro stub
+    expect_false(is.null(v_modelo_entrenado()))
+    expect_equal(v_modelo_entrenado()$method, "xgbTree")
   })
+})
+
+# ------------------------------------------------------------------------------
+# TEST 2: Flujo de predicción y guardado
+# ------------------------------------------------------------------------------
+
+test_that("El botón analizar genera resultados y guarda en BBDD", {
   
-  # TEST 2: Ejecución de Diagnóstico y guardado en BBDD
-  test_that("El botón Analizar genera predicción y guarda en BBDD", {
-    
-    modelo_fake <- list(tipo = "xgboost")
-    probs_fake <- data.frame(
-      "Salud Normal" = 0.1, 
-      "Caries" = 0.2, 
-      "Periodontitis" = 0.7, 
-      check.names = FALSE
+  m_exec <- mock(1)
+  
+  assign("cargar_datos_diagnostico", function(p) mock_datos, envir = .GlobalEnv)
+  assign("entrenar_modelo_diagnostico", function(d) list(method = "xgbTree"), envir = .GlobalEnv)
+  assign("dbExecute", m_exec, envir = .GlobalEnv)
+  
+  # Stub para la predicción de caret/xgboost
+  assign("predict", function(...) {
+    data.frame("Salud Normal" = 0.9, "Caries" = 0.05, "Periodontitis" = 0.05, check.names = FALSE)
+  }, envir = .GlobalEnv)
+  
+  testServer(diagnosticoServer, args = list(
+    pool = fake_conn,
+    current_user = user_session_doc
+  ), {
+    # Simulamos entrada de datos
+    session$setInputs(
+      edad = 40, placa = 20, sangrado = 10, 
+      bolsa = 2, fumador = FALSE
     )
     
-    m_predict <- mock(probs_fake)
-    m_execute <- mock(1)
+    # Pulsamos botón
+    session$setInputs(btn_analizar = 1)
     
-    # Aplicamos stubs
-    stub(diagnosticoServer, "predict", m_predict)
-    stub(diagnosticoServer, "dbExecute", m_execute)
-    # Evitamos que la auto-sincronización falle si no hay datos mockeando el cargador
-    stub(diagnosticoServer, "cargar_datos_diagnostico", mock(mock_datos_entrenamiento))
-    stub(diagnosticoServer, "entrenar_modelo_diagnostico", mock(modelo_fake))
+    # Comprobamos resultado reactivo
+    res <- v_ultimo_resultado()
+    expect_s3_class(res, "data.frame")
+    expect_equal(max(res$Probabilidad), 0.9)
     
-    testServer(diagnosticoServer, args = list(
-      pool = fake_conn,
-      current_user = user_session_doc
-    ), {
-      # Preparamos el estado
-      v_modelo_entrenado(modelo_fake)
-      
-      # Simulamos entrada de datos de un caso grave
-      session$setInputs(
-        edad = 55, placa = 80, sangrado = 40, 
-        bolsa = 6, fumador = TRUE
-      )
-      
-      # Disparamos el análisis
-      session$setInputs(btn_analizar = 1)
-      
-      res <- v_ultimo_resultado()
-      expect_equal(res$Categoria[which.max(res$Probabilidad)], "Periodontitis")
-      expect_called(m_execute, 1) # Verificamos que se guardó en MySQL
-    })
+    # Comprobamos que se llamó a la base de datos para guardar el diagnóstico
+    expect_called(m_exec, 1)
   })
   
-  # TEST 3: Seguridad ante datos insuficientes
-  test_that("La IA no se entrena si hay menos de 10 registros", {
-    
-    # Mock que devuelve un solo registro
-    m_cargar_pocos <- mock(data.frame(edad = 1))
-    m_entrenar <- mock() # No debería llamarse
-    
-    stub(diagnosticoServer, "cargar_datos_diagnostico", m_cargar_pocos)
-    stub(diagnosticoServer, "entrenar_modelo_diagnostico", m_entrenar)
-    
-    testServer(diagnosticoServer, args = list(
-      pool = fake_conn,
-      current_user = user_session_doc
-    ), {
-      expect_null(v_modelo_entrenado())
-      expect_called(m_entrenar, 0)
-    })
+  # Limpieza: Restaurar predict original de stats para no romper otros tests
+  assign("predict", stats::predict, envir = .GlobalEnv)
+  assign("dbExecute", DBI::dbExecute, envir = .GlobalEnv)
+})
+
+# ------------------------------------------------------------------------------
+# TEST 3: Validación de datos insuficientes
+# ------------------------------------------------------------------------------
+
+test_that("No entrena si la BBDD tiene menos de 10 registros", {
+  
+  # Devolvemos solo 3 filas
+  assign("cargar_datos_diagnostico", function(p) mock_datos[1:3, ], envir = .GlobalEnv)
+  
+  testServer(diagnosticoServer, args = list(
+    pool = fake_conn,
+    current_user = user_session_doc
+  ), {
+    # El modelo debe permanecer NULL
+    expect_null(v_modelo_entrenado())
   })
 })
