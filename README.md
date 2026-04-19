@@ -9,6 +9,34 @@
 
 ---
 
+## 📑 Table of Contents
+
+- [🌐 Live Application](#-live-application)
+- [📂 Project Structure & Branching Strategy](#-project-structure--branching-strategy)
+  - [🌿 Branching Strategy](#-branching-strategy)
+  - [📁 Directory Structure (main branch)](#-directory-structure-main-branch)
+- [🧩 Module Architecture](#-module-architecture)
+- [📂 System Diagrams Repository](#-system-diagrams-repository)
+- [📊 Additional Resources (TFG Support)](#-additional-resources-tfg-support)
+- [🖥️ Local Deployment](#️-local-deployment)
+  - [📥 Step 1: Download the repository](#-step-1-download-the-repository)
+  - [📦 Step 2: Install required dependencies](#-step-2-install-required-dependencies)
+  - [🚀 Step 3: Run the main application](#-step-3-run-the-main-application)
+  - [🧠 Step 4: Run Machine Learning models (optional)](#-step-4-run-machine-learning-models-optional)
+- [⚠️ Important Notes (Database Configuration)](#️-important-notes-database-configuration)
+- [💡 Key Value Propositions](#-key-value-propositions)
+- [🛠️ Technology Stack](#️-technology-stack)
+- [👥 System Roles](#-system-roles)
+- [🧭 Application Navigation Overview](#-application-navigation-overview)
+- [🤖 Predictive Models Overview](#-predictive-models-overview)
+- [☁️ AI Assistant Agent: Salesforce Agentforce Integration](#️-ai-assistant-agent-salesforce-agentforce-integration-via-tampermonkey)
+- [🚀 Deployment on Heroku and Buildpacks](#-deployment-on-heroku-and-buildpacks)
+- [📘 User Manual](#-user-manual)
+- [🎥 Video Tutorials (YouTube Channel)](#-video-tutorials-youtube-channel)
+
+---
+---
+
 ## 🌐 Live Application
 
 The OdontoGest platform is deployed and accessible online via Heroku.
@@ -183,7 +211,7 @@ DB_PASSWORD=your_password
 ```
 
 ---
-##  Key Value Propositions
+## 💡 Key Value Propositions
 
 ### 🏗️ Advanced Software Engineering
 * **SPA Architecture (Single Page Application):** Implemented using dynamic navigation, History API integration, and `sessionStorage` to maintain state across the R Shiny environment without page reloads.
@@ -219,7 +247,7 @@ The system features **"Dientecito"**, an intelligent agent orchestrated via the 
 
 ---
 
-## 👥System Roles
+## 👥 System Roles
 
 ### 👤 Visitor
 Unauthenticated user.
