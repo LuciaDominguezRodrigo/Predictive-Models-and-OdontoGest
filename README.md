@@ -8,6 +8,16 @@
 **OdontoGest** is a comprehensive clinical management platform for dental clinics that transforms the traditional reactive management approach into a **proactive, data-driven paradigm**. It integrates a robust web architecture with a **Clinical Decision Support System (CDSS)** powered by Machine Learning and an AI assistant utilizing **Retrieval-Augmented Generation (RAG)**.
 
 ---
+
+## 🌐 Live Application
+
+The OdontoGest platform is deployed and accessible online via Heroku.
+
+You can access the live application here:
+
+👉 https://clinic-app-tfg-c59c7bed5b0b.herokuapp.com/
+
+---
 ## 📂 Project Structure & Branching Strategy
 
 The repository is organized into two main branches to separate the development environment from the production-ready deployment.
@@ -33,7 +43,6 @@ This branch includes:
 - Production-specific environment settings
 - Lightweight dependencies required for execution
 
----
 
 ## 📁 Directory Structure (main branch)
 
@@ -75,27 +84,105 @@ This branch includes:
 | `reset_password` | Manage reset password logic|
 
 
+### 💡 Design Principles
 
-
----
-
-## 💡 Design Principles
-
-### 🔒 Isolation
+#### 🔒 Isolation
 Training models and datasets are separated from the production codebase in order to reduce application weight, improve security, and ensure a clean deployment environment.
 
----
 
-### ⚙️ Scalability
+#### ⚙️ Scalability
 Each feature is implemented as an independent module, preventing monolithic architecture and allowing the system to scale and evolve without structural complexity.
 
----
 
-### 🚀 Deployment Ready
+#### 🚀 Deployment Ready
 The `deployment` branch represents a production-optimized build of the system, specifically configured for deployment on **Heroku** with only the necessary runtime components.
 
+---
+
+## 🖥️ Local Deployment
+
+To run the application locally, you need to download the project repository and install the required dependencies.
 
 
+### 📥 Step 1: Download the repository
+
+Clone or download the repository from GitHub:
+
+```bash id="c2k9ld"
+git clone https://github.com/your-repo/odontogest.git
+cd odontogest
+```
+## 📦 Step 2: Install required dependencies
+
+The application is built in **R (Shiny framework)** and requires a set of packages used across the UI, backend, CDSS models, and AI integration modules.
+
+You can install all required packages in R using:
+
+```r id="r8k2ld"
+install.packages(c(
+  "shiny", "DBI", "pool", "RMariaDB", "dplyr", "ggplot2",
+  "httr", "jsonlite", "toastui", "shinyWidgets", "emayili",
+  "rmarkdown", "pagedown", "caret", "xgboost", "bcrypt",
+  "htmltools", "webshot2", "base64enc", "shinyjs", "DT",
+  "tidyr", "openxlsx", "bslib", "plotly", "dotenv", "digest",
+  "mailR", "sodium", "shinycssloaders", "MLmetrics", "shinyalert"
+), repos = "https://cran.rstudio.com/")
+```
+## 🚀 Step 3: Run the main application
+
+To launch the full **OdontoGest system**, navigate to the main application folder and run:
+
+```r id="r7k2ld"
+setwd("ClinicAppTFG")
+shiny::runApp("app.R")
+```
+
+## 🧠 Step 4: Run Machine Learning models (optional)
+
+Each machine learning model is implemented as an independent Shiny application.
+
+To execute a model individually:
+
+- Navigate to the corresponding folder inside `modelos/`
+- Open the `app.R` file
+- Run it in R or RStudio
+
+### Example:
+
+```r id="r2k8ld"
+shiny::runApp("modelos/modeloDiagnostico/app.R")
+```
+
+### ⚠️ Important Notes (Database Configuration)
+
+This application requires a **MySQL database** to function correctly, as it is used for patient records, appointments, inventory management, and clinical data storage.
+
+
+#### 🗄️ MySQL Requirement
+
+Before running the application locally, ensure that:
+
+- A **MySQL server is installed and running**
+- A valid database instance is available
+- Connection credentials are properly configured
+
+
+
+#### 🔐 Environment Variables (.env)
+
+To run the project locally, you must configure your own `.env` file with the required database credentials and system variables.
+
+Example `.env` structure:
+
+```env id="m9k2ld"
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=odontogest
+DB_USER=root
+DB_PASSWORD=your_password
+```
+
+---
 ##  Key Value Propositions
 
 ### 🏗️ Advanced Software Engineering
@@ -118,23 +205,19 @@ The system features **"Dientecito"**, an intelligent agent orchestrated via the 
 
 ## 🛠️ Technology Stack
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Backend** | R 4.x, Shiny, Pool Connection (MySQL/PostgreSQL) |
-| **Data Science** | `caret`, `xgboost`, `fastshap`, `ggplot2` |
-| **Security** | BCrypt (Hashing), Sodium (Tokens), Secure Cookies |
-| **Integration** | Salesforce Agentforce, Data Cloud, Tampermonkey (Secure Bridge) |
-| **DevOps** | Docker, Heroku, GitHub Actions (CI/CD) |
+| Layer | Technologies | Description |
+| :--- | :--- | :--- |
+| **Backend Architecture** | R 4.x, Shiny, R6, Pool (DB connection pooling), DBI | Core server logic built on reactive programming with Shiny, ensuring modularity, scalability, and efficient database connection management through pooling strategies. |
+| **Data Science & AI** | `caret`, `xgboost`, `fastshap`, `MLmetrics`, `ggplot2`, `tidyverse` | Machine learning pipeline for predictive modeling, including clinical diagnosis (XGBoost), inventory forecasting (regression models), and model explainability using SHAP values. |
+| **Database Layer** | MySQL / MariaDB, PostgreSQL (compatible), JawsDB (production) | Relational database architecture for persistent storage of clinical records, appointments, inventory, and user management with secure pooled connections. |
+| **Security & Authentication** | BCrypt, Sodium, secure session cookies, dotenv | Multi-layer security approach including password hashing, token-based authentication, environment variable isolation, and session protection mechanisms. |
+| **AI & External Integration** | Salesforce Agentforce, Einstein Data Cloud, RAG pipeline, Tampermonkey bridge | Integration of generative AI using Retrieval-Augmented Generation (RAG), secure browser-level injection for Agentforce, and orchestration via Salesforce Atlas reasoning engine. |
+| **Frontend & UI Layer** | Shiny modules, HTML5, CSS3, JavaScript, `shinyjs`, `bslib`, `shinyWidgets` | Modular and reactive UI design enabling dynamic SPA-like behavior within Shiny, with enhanced interactivity and role-based rendering. |
+| **DevOps & Deployment** | Docker, Heroku, GitHub Actions (CI/CD), buildpacks | Fully containerized deployment pipeline ensuring reproducibility across environments, automated CI/CD workflows, and scalable cloud deployment on Heroku. |
+| **Reporting & Documents** | `rmarkdown`, `pagedown`, `webshot2`, LaTeX | Automated generation of clinical PDFs, reports, and certificates with LaTeX-based rendering and headless browser PDF export. |
+
 
 ---
-
-## 🔄 RAG Architecture & Security Bridge
-
-A unique feature of this project is the **Secure AI Bridge** implemented via **Tampermonkey**:
-1. **Isolation:** The AI agent logic is decoupled from the main Shiny source code to protect Salesforce API credentials.
-2. **Zero Trust Tunnel:** Interaction with the **Atlas Reasoning Engine** is only activated on authorized workstations with the control script injected.
-3. **Grounding:** Every response from "Dientecito" is cross-referenced with the internal clinical library, ensuring the advice follows official medical protocols.
-
 
 ## 👥System Roles
 
@@ -215,7 +298,7 @@ The diagram uses color coding to represent access by different user roles:
 
 ![Navigation Diagram](./docs_readme/navigation_map.png)
 
-
+---
 ## 🤖 Predictive Models Overview
 
 This system integrates two Machine Learning models designed to support both **clinical decision-making** and **operational management** within the clinic.
@@ -275,7 +358,6 @@ This mapping allows the model outputs to be directly aligned with real clinical 
 - The model is designed to **assist**, not replace, clinical judgment
 - Special care is taken to minimize **false negatives in severe conditions**
 
----
 
 ### 🔍 Model Interpretability
 
@@ -283,7 +365,6 @@ This mapping allows the model outputs to be directly aligned with real clinical 
 - Key variables such as **age** and **glucose levels** drive model decisions
 - Each prediction can be broken down into feature contributions
 
----
 
 ### 🔒 Usage and Access
 
@@ -291,7 +372,6 @@ This mapping allows the model outputs to be directly aligned with real clinical 
 - Integrated within the **Clinical Decision Support System (CDSS)**
 - Outputs are intended as **decision support**
 
----
 
 ### ⚠️ Limitations
 
@@ -299,7 +379,6 @@ This mapping allows the model outputs to be directly aligned with real clinical 
 - Higher uncertainty in intermediate cases
 - Requires continuous validation
 
----
 
 ### 🔄 Future Improvements
 
@@ -307,11 +386,10 @@ This mapping allows the model outputs to be directly aligned with real clinical 
 - Improved classification granularity
 - Inclusion of additional clinical variables
 
+---
 ## ☁️ AI Assistant Agent: Salesforce Agentforce Integration (via Tampermonkey)
 
 The application features an intelligent assistant powered by Salesforce Agentforce. To seamlessly integrate the Salesforce chat capabilities into the web frontend without modifying the core production build during the testing phase, a Tampermonkey script approach was utilized.
-
----
 
 ### ⚙️ Integration Workflow
 
@@ -324,8 +402,6 @@ The script handles the following configuration values to establish a secure conn
 - `ORG_ID`
 - `DEPLOYMENT_NAME`
 - `SITE_URL`
-
----
 
 ### 🚀 Key Capabilities
 
@@ -348,7 +424,6 @@ This strategy ensures:
 - 📦 **Automated management of system and R dependencies**.
 - ⚙️ **Horizontal scalability** handled natively by Heroku.
 
----
 
 ### 🧱 Buildpacks Used
 
@@ -360,7 +435,7 @@ To properly configure the execution environment, the following buildpacks are us
 - `heroku-buildpack-r`  
   Handles the installation, compilation, and optimization of the R runtime environment in the cloud.
 
----
+
 
 ### 🗄️ Data Persistence
 
@@ -372,7 +447,7 @@ This approach allows:
 - 📊 Secure storage of sensitive clinical data, such as patient records.
 - ☁️ Independent scalability of the database layer.
 
----
+
 
 ### 📌 Architectural Considerations
 
@@ -394,6 +469,7 @@ This documentation includes step-by-step guidance for each user role, helping us
 
 📄 [User Manual](./docs_readme/Manual%20de%20uso%20OdontoGest.pdf)
 
+---
 ## 🎥 Video Tutorials (YouTube Channel)
 
 A dedicated **YouTube playlist** has been created containing step-by-step video tutorials on how to use the OdontoGest application.
