@@ -384,4 +384,22 @@ Thanks to this deployment strategy:
 
 ---
 
-💡 Overall, the combination of Heroku, buildpacks, and an external database service results in a robust, modular architecture suitable for real-world clinical environments.
+## 📘 User Manual
+
+A complete **User Manual** for the application is available, providing detailed explanations of system usage, workflows, and functional modules.
+
+This documentation includes step-by-step guidance for each user role, helping users understand how to interact with the platform effectively.
+
+📂 You can access the full manual and supporting documentation here:
+
+📄 [User Manual](./docs_readme/Manual%20de%20uso%20OdontoGest.pdf)
+
+## 🎥 Video Tutorials (YouTube Channel)
+
+A dedicated **YouTube playlist** has been created containing step-by-step video tutorials on how to use the OdontoGest application.
+
+These videos cover key workflows, system navigation, and role-based usage of the platform to support both onboarding and daily operation.
+
+📺 Access the playlist here:
+
+👉 https://www.youtube.com/playlist?list=PLrmyvPQXD7ZzwvdFQjzUq0tzJ-3yJP1HQ
