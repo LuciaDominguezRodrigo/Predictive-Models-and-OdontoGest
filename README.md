@@ -470,6 +470,20 @@ This documentation includes step-by-step guidance for each user role, helping us
 📄 [User Manual](./docs_readme/Manual%20de%20uso%20OdontoGest.pdf)
 
 ---
+
+## 📊 Additional Resources (TFG Support)
+
+A complementary resource has been created to support the theoretical and technical foundation of this Final Degree Project (TFG).
+
+This document contains a structured table of resources, including academic references, tools, and supporting materials used throughout the development of the system.
+
+### 📄 Access the Resource Table
+
+👉 https://drive.google.com/file/d/1P5bVED1JNHZ9liobbFIbL-ScAjHn8hkf/view?usp=sharing
+
+---
+
+---
 ## 🎥 Video Tutorials (YouTube Channel)
 
 A dedicated **YouTube playlist** has been created containing step-by-step video tutorials on how to use the OdontoGest application.
