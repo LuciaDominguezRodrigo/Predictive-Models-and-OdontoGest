@@ -1,261 +1,129 @@
 # 🏥 OdontoGest: Intelligent Clinical Management System with CDSS and RAG-based AI
 
-**Final Degree Project (TFG)**  
-**A Data-Driven Approach to Clinical Decision Support using Machine Learning, Explainable AI, and Salesforce-powered Retrieval-Augmented Generation**
+[![R Shiny](https://img.shields.io/badge/Framework-R%20Shiny-blue.svg)](https://shiny.posit.co/)
+[![Salesforce](https://img.shields.io/badge/AI-Salesforce%20Agentforce-blueviolet.svg)](https://www.salesforce.com/products/einstein/agentforce/)
+[![Status](https://img.shields.io/badge/Status-Final%20Degree%20Project-orange.svg)]()
+[![Docker](https://img.shields.io/badge/Container-Docker-blue.svg)]()
+
+**OdontoGest** is a comprehensive clinical management platform for dental clinics that transforms the traditional reactive management approach into a **proactive, data-driven paradigm**. It integrates a robust web architecture with a **Clinical Decision Support System (CDSS)** powered by Machine Learning and an AI assistant utilizing **Retrieval-Augmented Generation (RAG)**.
 
 ---
 
-## 📌 Abstract
+##  Key Value Propositions
 
-This project presents the design, development, and evaluation of an intelligent clinical platform that integrates a **Dental Management System (OdontoGest)** with a **Clinical Decision Support System (CDSS)**. The platform is enhanced by **Machine Learning (ML)**, **Explainable Artificial Intelligence (XAI)**, and **Retrieval-Augmented Generation (RAG)** powered by **Salesforce Agentforce**.
+### 🏗️ Advanced Software Engineering
+* **SPA Architecture (Single Page Application):** Implemented using dynamic navigation, History API integration, and `sessionStorage` to maintain state across the R Shiny environment without page reloads.
+* **Modular Design:** Strictly decoupled architecture using *Namespacing*, ensuring high maintainability, testability, and scalability.
+* **Granular RBAC:** Role-Based Access Control managing 8 distinct profiles (Doctor, Hygienist, Patient, Admin, Receptionist, Laboratory, Commercial, and Visitor).
 
-The system addresses inefficiencies in traditional clinical workflows by introducing a **proactive, data-driven paradigm**, combining structured clinical data with unstructured knowledge sources to support both operational management and complex clinical decision-making.
+### 🧠 Intelligence & Decision Support (CDSS)
+* **Inventory Forecasting:** A log-linear regression model (`caret`) that predicts monthly supply demands to prevent stockouts.
+* **Diagnostic Assistance:** An **XGBoost** classifier trained to assist in periodontal disease severity assessment.
+* **Explainable AI (XAI):** Integration of **SHAP values** to provide clinical transparency, allowing doctors to understand the "why" behind every AI suggestion.
 
----
-
-## 🎯 Research Objectives
-
-- Design and implement a modular clinical management system in **R Shiny**.
-- Develop predictive models for inventory forecasting and diagnostic classification.
-- Ensure interpretability through **SHAP-based Explainable AI (XAI)**.
-- Implement a **RAG-based generative AI assistant** using **Salesforce Agentforce**.
-- Evaluate system performance using quantitative (ML metrics) and qualitative (clinical usability) criteria.
-
----
-
-## 🧪 Methodology
-
-The project follows a structured and iterative methodology:
-
-### 1. Data Collection & Preprocessing
-- Clinical variables and operational datasets  
-- Data cleaning, normalization, and transformation  
-
-### 2. Model Development
-- Regression and classification models  
-- Hyperparameter tuning using cross-validation (caret)  
-
-### 3. System Integration
-- Integration into a modular **R Shiny** application  
-- Decoupled architecture (UI / Server / ML modules)  
-
-### 4. Evaluation
-- Quantitative metrics (ML performance)  
-- Qualitative validation (clinical interpretability and usability)  
+### 🤖 Generative AI: Agentforce & RAG
+The system features **"Dientecito"**, an intelligent agent orchestrated via the Salesforce ecosystem:
+* **RAG Pipeline:** Extracts semantic knowledge from clinical guidelines and nutritional protocols (PDFs) to generate grounded, hallucination-free responses.
+* **Atlas Reasoning Engine:** Interprets user intent and dynamically selects the correct knowledge topics.
+* **Einstein Trust Layer:** Ensures clinical data privacy by anonymizing sensitive information before processing.
 
 ---
 
-## 🧩 System Architecture
+## 🛠️ Technology Stack
 
-The platform is composed of two main subsystems:
-
-### 🦷 OdontoGest (Clinical Management System)
-
-A web application developed in **R Shiny** providing:
-
-- Patient management (EHR)  
-- Appointment scheduling  
-- Inventory management  
-- Role-Based Access Control (RBAC)  
-- Interactive dashboards  
+| Layer | Technologies |
+| :--- | :--- |
+| **Backend** | R 4.x, Shiny, Pool Connection (MySQL/PostgreSQL) |
+| **Data Science** | `caret`, `xgboost`, `fastshap`, `ggplot2` |
+| **Security** | BCrypt (Hashing), Sodium (Tokens), Secure Cookies |
+| **Integration** | Salesforce Agentforce, Data Cloud, Tampermonkey (Secure Bridge) |
+| **DevOps** | Docker, Heroku, GitHub Actions (CI/CD) |
 
 ---
 
-### 🧠 Clinical Decision Support System (CDSS)
+## 🔄 RAG Architecture & Security Bridge
 
-An intelligent layer that integrates:
+A unique feature of this project is the **Secure AI Bridge** implemented via **Tampermonkey**:
+1. **Isolation:** The AI agent logic is decoupled from the main Shiny source code to protect Salesforce API credentials.
+2. **Zero Trust Tunnel:** Interaction with the **Atlas Reasoning Engine** is only activated on authorized workstations with the control script injected.
+3. **Grounding:** Every response from "Dientecito" is cross-referenced with the internal clinical library, ensuring the advice follows official medical protocols.
 
-- Predictive models  
-- Diagnostic classification  
-- Explainability mechanisms  
-- Generative AI assistant (RAG) 
 
-## 🔐 Security and Access Control
+## 👥System Roles
 
-The system implements a **Role-Based Access Control (RBAC)** model with the following roles:
+### 👤 Visitor
+Unauthenticated user.
+- Access to the home page.
+- Contact form access.
 
-- Doctor  
-- Hygienist  
-- Receptionist  
-- Administrator  
-- Laboratory  
-- Commercial  
-- Patient  
-- Visitor  
 
-### Security Features
+### 🧑‍⚕️ Patient
+Restricted access to their own information.
+- Manage appointments.
+- Update profile.
+- Download medical assistance certificates.
+- For security reasons, if a patient wishes to obtain a copy of their clinical history, it must be provided by authorized clinical staff.
 
-- Password hashing using `bcrypt`  
-- Secure token generation with `sodium`  
-- Controlled access to sensitive clinical data  
 
----
+### 🏥 Receptionist
+Operational core of the system.
+- Manage the global schedule
+- Handle the inbox from the contact form
+- Create/Delete user accounts 
+- ❌ No access to sensitive clinical data (e.g., diagnoses)
 
-## 🚀 Installation and Usage
 
-### Requirements
+### 👨‍⚕️ Clinical Staff (Doctor / Hygienist)
+Users with access to clinical systems.
+- Use the Clinical Decision Support System (CDSS) that includes  Machine Learning models for:
+  - Diagnostics
+  - Inventory management
+- Visualize, edit and download Patients Clinical History (understanding editing as addding new clinical notes)
+- Visualize order status (both protesic and stock orders). Also update the order status (in the case that the order must be returned, indicate why).
+- Visualize the calendar, with the data for each appointment. If the appointment has already occurs, add clinical relevant notes.
+- Update profile info.
 
-- R environment  
-- Required packages  
 
-### ▶️ Run locally
+### 🛠️ Administrator (Admin)
+Superuser with full system access.
+- Full system auditing
+- Manage user status (Ban / Unban)
+- Access to all modules
 
-```r
-install.packages(c(
-  "shiny", "caret", "xgboost", "dplyr",
-  "plotly", "fastshap", "bcrypt",
-  "sodium", "pool", "RMariaDB", "emayili"
-))
 
-shiny::runApp("ClinicAppTFG")
-
-```
-
----
-
-## 🐳 Docker
-
-```bash
-docker build -t odontogest-app .
-docker run -p 3838:3838 odontogest-app
-```
-
-## 📊 Contributions
-
-- Integration of **Machine Learning, Explainable AI (XAI), and Retrieval-Augmented Generation (RAG)** in a healthcare environment  
-- Practical implementation of a **Clinical Decision Support System (CDSS)**  
-- Combination of **structured and unstructured data sources** for intelligent decision-making  
-- Development of a **real-world applicable clinical platform**  
+### 🧪 Commercial / Laboratory (Lab)
+External role with limited access.
+- Access the order management module
+- Update manufacturing status
+- Provide tracking information
+- ❌ No access to clinical or personal data
 
 ---
 
-## 🔮 Future Work
 
-- Integration with healthcare interoperability standards (**FHIR**)  
-- Incorporation of advanced **Deep Learning models**  
-- Radiographic image analysis using **Computer Vision techniques**  
-- Development of **scalable and real-time RAG pipelines**  
+## 🧭 Application Navigation Overview
 
----
+This diagram provides a **high-level overview** of the application's navigation structure.
 
-## 🧠 Artificial Intelligence Architecture
+It is intended to give a general understanding of how users move through the system and how the main modules are organized.
 
-### 1. Predictive Modeling (Machine Learning)
-- **Inventory Forecasting:** Log-Linear Regression to predict monthly demand based on historical consumption and patient ratios.
-- **Clinical Diagnosis:** **XGBoost** classifier for periodontal severity assessment using clinical biomarkers.
-- **Explainability:** Integration of **SHAP values** to provide transparency, showing the weight of each clinical variable in the AI's diagnostic suggestion.
+### 📝 Notes
+- This is a **simplified representation** of the system.
+- Some screens are **shared across multiple user roles**, but are not duplicated in the diagram for clarity.
+- These shared views and detailed flows are fully described in the **User Manual**.
 
-### 2. Generative AI & RAG (Salesforce Agentforce)
-The system features an intelligent assistant named **"Dietencito"**, built on the **Salesforce** ecosystem to ensure enterprise-grade reliability and security.
+### 🎨 Legend (Color Coding)
 
-*   **Technology Provider:** Salesforce (Agentforce / Data Cloud).
-*   **RAG Mechanism:** The assistant retrieves context from a **Data Library** containing clinical guidelines, PDFs, and nutritional protocols before generating a response.
-*   **Grounded Knowledge:** By using Salesforce's retrieval pipeline, the model minimizes hallucinations and provides advice strictly based on the provided clinical documentation.
+The diagram uses color coding to represent access by different user roles:
 
----
+- 🔵 **Light Blue**: General screens (shared/common)
+- ⚪ **Grey**: External screens (without login)
+- 🟢 **Light Green**: Patient
+- 🟣 **Purple**: Commercial / Laboratory
+- 🔷 **Dark Blue**: Administrator
+- 🌸 **Pink**: Receptionist
+- 🟡 **Yellow**: Clinical Staff
 
-## 🔄 RAG Pipeline (Powered by Salesforce)
+### 🗺️ Navigation Diagram
 
-The integration follows a sophisticated flow to ensure data accuracy:
-
-1.  **Data Ingestion:** Clinical PDFs and protocols are ingested into the Salesforce Data Library.
-2.  **Vector Search:** When a user queries the assistant, Salesforce's retrieval engine performs a semantic search.
-3.  **Context Injection:** The most relevant "chunks" of information are injected into the LLM prompt.
-4.  **Grounded Generation:** The agent generates a response that is contextually accurate and clinically relevant.
-
----
-
-## ⚙️ Technology Stack
-
-### Backend & Data Science
-- **R 4.x:** Core language for logic and statistical modeling.
-- **caret & xgboost:** Machine Learning training and optimization.
-- **fastshap:** Model interpretability (XAI).
-
-### Frontend & Integration
-- **R Shiny:** Web framework for the clinical dashboard.
-- **Salesforce Agentforce:** RAG-based AI Assistant and vector knowledge management.
-
-### Database & Security
-- **MySQL / PostgreSQL:** Relational data management.
-- **bcrypt & sodium:** Password hashing and secure cryptographic tokens.
-
-### DevOps
-- **Docker:** Containerization for consistent deployment.
-- **GitHub Actions:** CI/CD pipeline for automated testing and deployment.
-
----
-
-## 📁 Repository Structure
-
-```text
-.
-├── ClinicAppTFG/        # Shiny application (UI/Server modules)
-├── modelos/             # ML training scripts and serialized models
-├── data/                # Database schemas and synthetic datasets
-├── docs/                # Architecture diagrams and RAG workflow
-├── tests/               # Unit testing suite (testthat)
-└── README.md
-
-```
-
-## 🤖 Implementación de IA Generativa: RAG & Salesforce Agentforce
-
-La innovación disruptiva de este proyecto es el asistente inteligente **"Dietencito"**, que utiliza una arquitectura de **Generación Aumentada por Recuperación (RAG)**. A diferencia de un chat convencional, este sistema no "inventa" respuestas, sino que las fundamenta en evidencia científica cargada previamente en el sistema.
-
-### 🏗️ El Ecosistema Salesforce Agentforce
-
-Se ha seleccionado **Salesforce** como infraestructura para el RAG por su capacidad de manejar datos clínicos con alta seguridad y su motor de búsqueda vectorial nativo:
-
-*   **Data Cloud:** Actúa como el "cerebro" del sistema. Aquí se almacenan y vectorizan los documentos no estructurados (PDFs de guías clínicas, protocolos de cirugía, recomendaciones nutricionales).
-*   **Atlas Reasoning Engine:** Es el motor de razonamiento de Agentforce. Interpreta la intención del usuario, evalúa el contexto y decide qué documentos recuperar antes de generar la respuesta final.
-*   **Einstein Trust Layer:** Capa de seguridad que anonimiza datos sensibles (PII) antes de enviarlos al LLM, garantizando que la clínica cumpla con las normativas de protección de datos de salud.
-
-### 🔄 Flujo de Trabajo del RAG (Pipeline)
-
-El proceso de respuesta sigue un pipeline riguroso para asegurar la veracidad (*grounding*):
-
-1.  **Ingestión y Chunking:** Fragmentación de documentos para búsquedas precisas.
-2.  **Vectorización (Embeddings):** Conversión de fragmentos en vectores semánticos.
-3.  **Recuperación Semántica:** Búsqueda en la base de datos vectorial de los fragmentos con mayor similitud a la consulta.
-4.  **Aumentación del Prompt:** Construcción de un prompt dinámico que incluye los fragmentos recuperados como única fuente de verdad.
-5.  **Generación Grounded:** El LLM genera una respuesta veraz, citando la fuente y eliminando alucinaciones.
-
----
-
-## 🛡️ Diseño de Arquitectura: Seguridad vía Tampermonkey
-
-Por motivos de seguridad y para garantizar el cumplimiento de protocolos de protección de datos, la comunicación con el agente se ha implementado mediante un **Userscript (Tampermonkey)** como puente de arquitectura:
-
-*   **Aislamiento de Capas:** El agente de IA no se expone directamente en el código fuente de la web app Shiny, protegiendo las credenciales y tokens de la API de Salesforce del acceso público.
-*   **Túnel Seguro (Zero Trust):** La interacción con el **Atlas Reasoning Engine** solo se activa en estaciones de trabajo autorizadas que posean el script de control inyectado, añadiendo una capa de seguridad basada en dispositivo.
-*   **Gestión de Sesión:** Tampermonkey actúa como gestor de tokens en el lado del cliente, asegurando que la conexión con el agente solo sea posible bajo una sesión autenticada y cifrada.
-
----
-
-## 📊 Comparativa: IA Tradicional vs. OdontoGest RAG
-
-| Característica | LLM Tradicional (Genérico) | OdontoGest RAG (Salesforce) |
-| :--- | :--- | :--- |
-| **Fuente de Información** | Datos de entrenamiento estáticos | Documentación clínica dinámica |
-| **Veracidad** | Propenso a alucinaciones | Respuestas basadas en evidencia |
-| **Privacidad** | Riesgo de fuga de datos | Salesforce Trust Layer (Privado) |
-| **Implementación** | Inserción directa en código | Inyección segura vía Tampermonkey |
-
----
-
-## 🛠️ Configuración Técnica en el Repositorio
-
-Para habilitar la comunicación entre el dashboard en **R Shiny** y el agente de **Salesforce** (gestionado por el script de Tampermonkey), el archivo de configuración debe contener:
-
-```env
-# Salesforce & RAG Configuration
-SALESFORCE_ORG_ID="00DWs00000MLtHl"
-SALESFORCE_SITE_URL="[https://storm-9d7318d2748761.my.site.com/](https://storm-9d7318d2748761.my.site.com/)..."
-SALESFORCE_SCRT_URL="[https://storm-9d7318d2748761.my.salesforce-scrt.com](https://storm-9d7318d2748761.my.salesforce-scrt.com)"
-SALESFORCE_TOKEN_ENCRYPTION="sodium_encrypted_key"
-
-# Client-Side Security (Tampermonkey)
-VERSION_SCRIPT="2.0"
-AUTHOR="JGG"
-```
+![Navigation Diagram](./docs/Diagrama_navegacion_OdontoGest.png)
