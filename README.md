@@ -1,7 +1,7 @@
 # 🏥 OdontoGest: Intelligent Clinical Management System with CDSS and RAG-based AI
 
 [![R Shiny](https://img.shields.io/badge/Framework-R%20Shiny-blue.svg)](https://shiny.posit.co/)
-[![Salesforce](https://img.shields.io/badge/AI-Salesforce%20Agentforce-blueviolet.svg)](https://www.salesforce.com/products/einstein/agentforce/)
+[![Salesforce](https://img.shields.io/badge/AI-Salesforce%20Agentforce-blueviolet.svg)]([https://www.salesforce.com/products/einstein/agentforce/](https://www.salesforce.com/es/agentforce/))
 [![Status](https://img.shields.io/badge/Status-Final%20Degree%20Project-orange.svg)]()
 [![Docker](https://img.shields.io/badge/Container-Docker-blue.svg)]()
 
