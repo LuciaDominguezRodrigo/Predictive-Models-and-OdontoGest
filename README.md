@@ -83,6 +83,7 @@ This branch includes:
 | `public` | Landing page|
 | `reset_password` | Manage reset password logic|
 
+![modules](./docs_readme/architecture.png)
 
 ### 💡 Design Principles
 
