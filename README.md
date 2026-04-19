@@ -85,18 +85,18 @@ This branch includes:
 
 ![modules](./docs_readme/architecture.png)
 
-### 💡 Design Principles
+---
+## 📂 System Diagrams Repository
 
-#### 🔒 Isolation
-Training models and datasets are separated from the production codebase in order to reduce application weight, improve security, and ensure a clean deployment environment.
+A complete collection of system diagrams and architectural visualizations has been created to support the understanding of the OdontoGest platform, including its AI, ML, database, and software architecture layers.
+
+These diagrams are used to complement the system design and are available for reference and documentation purposes.
+
+### 📁 Access Diagram Collection
+
+👉 [View System Diagrams (Google Drive)](https://drive.google.com/drive/folders/1CvZI1z0IHKi8FLUACQU70EJh_BzF_S_C?usp=sharing)
 
 
-#### ⚙️ Scalability
-Each feature is implemented as an independent module, preventing monolithic architecture and allowing the system to scale and evolve without structural complexity.
-
-
-#### 🚀 Deployment Ready
-The `deployment` branch represents a production-optimized build of the system, specifically configured for deployment on **Heroku** with only the necessary runtime components.
 
 ---
 
