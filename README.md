@@ -33,6 +33,7 @@
 - [🚀 Deployment on Heroku and Buildpacks](#-deployment-on-heroku-and-buildpacks)
 - [📘 User Manual](#-user-manual)
 - [🎥 Video Tutorials (YouTube Channel)](#-video-tutorials-youtube-channel)
+- [📊 Additional Resources (TFG Support)](#-additional-resources-tfg-support)
 
 ---
 ---
@@ -497,19 +498,6 @@ This documentation includes step-by-step guidance for each user role, helping us
 
 📄 [User Manual](./docs_readme/Manual%20de%20uso%20OdontoGest.pdf)
 
----
-
-## 📊 Additional Resources (TFG Support)
-
-A complementary resource has been created to support the theoretical and technical foundation of this Final Degree Project (TFG).
-
-This document contains a structured table of resources, including academic references, tools, and supporting materials used throughout the development of the system.
-
-### 📄 Access the Resource Table
-
-👉 https://drive.google.com/file/d/1P5bVED1JNHZ9liobbFIbL-ScAjHn8hkf/view?usp=sharing
-
----
 
 ---
 ## 🎥 Video Tutorials (YouTube Channel)
@@ -521,3 +509,15 @@ These videos cover key workflows, system navigation, and role-based usage of the
 📺 Access the playlist here:
 
 👉 https://www.youtube.com/playlist?list=PLrmyvPQXD7ZzwvdFQjzUq0tzJ-3yJP1HQ
+
+---
+
+## 📊 Additional Resources (TFG Support)
+
+A complementary resource has been created to support the theoretical and technical foundation of this Final Degree Project (TFG).
+
+This document contains a structured table of resources, including academic references, tools, and supporting materials used throughout the development of the system.
+
+### 📄 Access the Resource Table
+
+👉 https://drive.google.com/file/d/1P5bVED1JNHZ9liobbFIbL-ScAjHn8hkf/view?usp=sharing
