@@ -1,0 +1,5 @@
+libmariadb-dev
+libmariadb-dev-compat
+libsodium-dev
+libcurl4-openssl-dev
+default-jdk

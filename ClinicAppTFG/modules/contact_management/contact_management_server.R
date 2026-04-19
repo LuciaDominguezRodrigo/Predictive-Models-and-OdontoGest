@@ -1,5 +1,6 @@
 library(emayili)
 
+
 contactManagementServer <- function(id, pool, .test_refresh = FALSE) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -188,7 +189,7 @@ contactManagementServer <- function(id, pool, .test_refresh = FALSE) {
                   "UPDATE contacto 
                    SET leido = TRUE, fecha_respuesta = NOW(), respuesta = 'Archivado manualmente'
                    WHERE id = ?",
-                  list(input$target_archive))
+                  params = list(input$target_archive))
         
         showNotification("Mensaje movido al historial",
                          type = "message")
@@ -235,28 +236,34 @@ contactManagementServer <- function(id, pool, .test_refresh = FALSE) {
     observeEvent(input$confirm_send, {
       req(rv_active_msg$id, input$email_body)
       
+  
+
       shinyjs::disable("confirm_send")
       
       tryCatch({
-        email <- envelope() %>%
+        email_msg <- envelope() %>%
           from("clinicapptfg@gmail.com") %>%
           to(rv_active_msg$email) %>%
           subject("Re: Consulta ClinicApp") %>%
           text(input$email_body)
         
-        smtp_server(email)
+        # AQUÍ ESTABA EL FALLO (Añadido verbose = FALSE y cambiado a email_msg)
+        smtp_server(email_msg, verbose = FALSE)
         
+        # AQUÍ ESTABA EL SEGUNDO FALLO (Faltaba params = )
         dbExecute(pool,
                   "UPDATE contacto 
                    SET leido = TRUE, respuesta = ?, fecha_respuesta = NOW()
                    WHERE id = ?",
-                  list(input$email_body, rv_active_msg$id))
+                  params = list(input$email_body, rv_active_msg$id))
         
         removeModal()
         showNotification("Respuesta enviada y mensaje archivado",
                          type = "message")
       },
       error = function(e) {
+        # Si falla, volvemos a habilitar el botón
+        shinyjs::enable("confirm_send")
         showNotification(
           paste("Error al enviar correo:", e$message),
           type = "error"

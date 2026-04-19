@@ -1,4 +1,10 @@
 # --- resetPasswordServer.R ---
+library(shiny)
+library(DBI)
+library(sodium)
+library(emayili)
+library(shinyjs)
+library(magrittr)
 
 # Constantes de Correo
 MI_PASS_APP <- "qffj vlrz kmzq jpwz" 
@@ -13,52 +19,18 @@ generar_token_seguro <- function() {
   return(token)
 }
 
-# Función de envío de Correo
-enviar_correo_restablecimiento <- function(destinatario, nombre_usuario, token_restablecimiento) {
-  PUERTO_LOCAL <- "3841" 
-  URL_BASE_APP <- paste0("http://127.0.0.1:", PUERTO_LOCAL) 
-  
-  enlace_restablecimiento <- paste0(URL_BASE_APP, "/?page=reset_confirm&token=", token_restablecimiento)
-  
-  cuerpo_html <- paste0(
-    "<html><body>",
-    "<h2>¡Hola, ", nombre_usuario, "!</h2>",
-    "<p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en ClinicAppTFG.</p>",
-    "<p>Haz clic en el siguiente botón. Este enlace caducará en 30 minutos.</p>",
-    "<a href='", enlace_restablecimiento, "' style='background-color: #6a0dad; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>",
-    "Restablecer Contraseña</a>",
-    "<p style='margin-top: 20px;'>Si no solicitaste este cambio, ignora este correo.</p>",
-    "</body></html>"
-  )
-  
-  tryCatch({
-    mailR::send.mail(
-      from = MI_CORREO,
-      to = destinatario,
-      subject = "Solicitud de Restablecimiento de Contraseña para ClinicAppTFG",
-      html = TRUE, 
-      body = cuerpo_html,
-      smtp = list(
-        host.name = SMTP_HOST,
-        port = SMTP_PORT,
-        user.name = MI_CORREO,
-        passwd = MI_PASS_APP, 
-        ssl = TRUE
-      ),
-      authenticate = TRUE,
-      send = TRUE
-    )
-    return(TRUE)
-  }, error = function(e) {
-    message("Error al enviar correo: ", e$message) 
-    return(FALSE)
-  })
-}
-
 # SERVIDOR DEL MÓDULO
 resetPasswordServer <- function(id, pool, show_view, update_url) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    
+    # --- CONFIGURACIÓN SMTP (EMAYILI) ---
+    smtp_server <- server(
+      host = SMTP_HOST,
+      port = SMTP_PORT,
+      username = MI_CORREO,
+      password = MI_PASS_APP
+    )
     
     observeEvent(input$btn_reset, {
       req(pool)
@@ -100,7 +72,7 @@ resetPasswordServer <- function(id, pool, show_view, update_url) {
                     params = list(
                       token, 
                       format(expiracion, "%Y-%m-%d %H:%M:%S"), 
-                      user_info$id[[1]] 
+                      user_info$id 
                     ))
         }, error = function(e) {
           print(paste("Error al actualizar token:", e$message))
@@ -109,12 +81,46 @@ resetPasswordServer <- function(id, pool, show_view, update_url) {
         
         # Enviar Correo si la DB se actualizó correctamente
         if (update_result == 1) {
-          envio_exitoso <- enviar_correo_restablecimiento(
-            destinatario = user_info$email,
-            nombre_usuario = user_info$nombre,
-            token_restablecimiento = token
+          
+          # --- GENERAR URL DINÁMICA ---
+          protocolo <- "http"
+          if (!is.null(session$clientData$url_protocol) && session$clientData$url_protocol != "") {
+            protocolo <- gsub(":$", "", session$clientData$url_protocol)
+          }
+          
+          url_base <- paste0(
+            protocolo, "://", 
+            session$clientData$url_hostname,
+            if (session$clientData$url_port != "") paste0(":", session$clientData$url_port) else ""
           )
-          if(envio_exitoso) print("Correo enviado con éxito") else print("Fallo en el envío del correo")
+          
+          enlace_restablecimiento <- paste0(url_base, "/?page=reset_confirm&token=", token)
+          
+          # --- CREAR CUERPO DEL MENSAJE CON EMAYILI ---
+          cuerpo_html <- paste0(
+            "<html><body>",
+            "<h2>¡Hola, ", user_info$nombre, "!</h2>",
+            "<p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en OdontoGest.</p>",
+            "<p>Haz clic en el siguiente enlace. Este enlace caducará en 30 minutos.</p>",
+            "<a href='", enlace_restablecimiento, "' style='background-color: #6a0dad; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>",
+            "Restablecer Contraseña</a>",
+            "<p style='margin-top: 20px;'>Si no solicitaste este cambio, ignora este correo.</p>",
+            "</body></html>"
+          )
+          
+          tryCatch({
+            email_msg <- envelope() %>%
+              from(MI_CORREO) %>%
+              to(user_info$email) %>%
+              subject("Solicitud de Restablecimiento de Contraseña para OdontoGest") %>%
+              html(cuerpo_html)
+            
+            smtp_server(email_msg, verbose = FALSE)
+            print("Correo enviado con éxito")
+            
+          }, error = function(e) {
+            print(paste("Fallo en el envío del correo:", e$message))
+          })
         }
       }
       

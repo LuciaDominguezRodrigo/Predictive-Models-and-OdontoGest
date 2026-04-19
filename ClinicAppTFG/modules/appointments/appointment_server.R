@@ -20,7 +20,7 @@ appointmentServer <- function(id, pool, current_user){
       edit_mode = FALSE
     )
     
-    # --- 1. CONFIGURACIÓN SMTP ---
+    # --- 1. CONFIGURACIÓN SMTP (EMAYILI) ---
     smtp_server <- server(
       host = "smtp.gmail.com",
       port = 465,
@@ -453,7 +453,7 @@ appointmentServer <- function(id, pool, current_user){
                           "1"="#7e57c2", "2"="#26a69a", "3"="#ffa726", "#26a69a")
       
       # ========================
-      #  USAR MISMA CONEXIÓN (CLAVE)
+      #  USAR MISMA CONEXIÓN
       # ========================
       con <- pool::poolCheckout(pool)
       on.exit(pool::poolReturn(con), add = TRUE)
@@ -484,7 +484,7 @@ appointmentServer <- function(id, pool, current_user){
         }
         
         # ========================
-        # EMAIL
+        # EMAIL GUARDADO
         # ========================
         info_paciente <- DBI::dbGetQuery(con, "
       SELECT u.email, u.nombre 
@@ -506,28 +506,29 @@ appointmentServer <- function(id, pool, current_user){
                                  "ha sido actualizada"
         )
         
-        if (nrow(info_paciente) > 0 && !is.null(info_paciente$email)) {
+        if (nrow(info_paciente) > 0 && !is.null(info_paciente$email) && info_paciente$email != "") {
           
-            tryCatch({
-              
-              email_msg <- envelope() %>%
-                from("clinicapptfg@gmail.com") %>%
-                to(info_paciente$email) %>%
-                subject("Actualización de su Cita - ClinicApp") %>%
-                text(paste0(
-                  "Hola ", info_paciente$nombre, ",\n\n",
-                  "Su cita ", mensaje_estado, ".\n",
-                  "Fecha: ", format(as.POSIXct(ts_str), "%d/%m/%Y a las %H:%M"), "\n\n",
-                  "Gracias por confiar en nosotros."
-                ))
-              
-              smtp_server(email_msg)
-              
-              print(paste("EMAIL ENVIADO A:", info_paciente$email))
-              
-            }, error = function(e) {
-              print(paste("ERROR EMAIL:", e$message))
-            })
+          tryCatch({
+            
+            email_msg <- envelope() %>%
+              from("clinicapptfg@gmail.com") %>%
+              to(info_paciente$email) %>%
+              subject("Actualización de su Cita - ClinicApp") %>%
+              text(paste0(
+                "Hola ", info_paciente$nombre, ",\n\n",
+                "Su cita ", mensaje_estado, ".\n",
+                "Fecha: ", format(as.POSIXct(ts_str), "%d/%m/%Y a las %H:%M"), "\n\n",
+                "Gracias por confiar en nosotros."
+              ))
+            
+            # Enviar usando la sintaxis de emayili
+            smtp_server(email_msg, verbose = FALSE)
+            
+            print(paste("EMAIL ENVIADO A:", info_paciente$email))
+            
+          }, error = function(e) {
+            print(paste("ERROR EMAIL:", e$message))
+          })
         }
         
         # --- UI ---
@@ -539,6 +540,7 @@ appointmentServer <- function(id, pool, current_user){
         showNotification(paste("Error:", e$message), type = "error")
       })
     })    
+    
     observeEvent(input$btn_cancelar_inicio, {
       shinyjs::hide("capa_principal"); shinyjs::hide("footer_normal"); shinyjs::show("capa_cancelacion")
     })
@@ -577,11 +579,9 @@ appointmentServer <- function(id, pool, current_user){
           )
           
           # ========================
-          #  ENVIAR EMAIL
+          #  ENVIAR EMAIL CANCELACIÓN
           # ========================
-          if (nrow(info_paciente) > 0 && 
-              !is.na(info_paciente$email) && 
-              info_paciente$email != "") {
+          if (nrow(info_paciente) > 0 && !is.na(info_paciente$email) && info_paciente$email != "") {
             
             tryCatch({
               
@@ -602,7 +602,8 @@ appointmentServer <- function(id, pool, current_user){
                   "Un saludo,\nClinicApp"
                 ))
               
-              smtp_server(email_msg)
+              # Enviar usando la sintaxis de emayili
+              smtp_server(email_msg, verbose = FALSE)
               
               print(paste("EMAIL CANCELACIÓN ENVIADO A:", info_paciente$email))
               

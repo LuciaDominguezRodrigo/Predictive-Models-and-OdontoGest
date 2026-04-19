@@ -1,7 +1,7 @@
 # ==============================================================================
 # PROYECTO: ClinicAppTFG
 # MÓDULO: db_init.R
-# DESCRIPCIÓN: Este script recrea la base de datos y las tablas desde cero si RESET_DB = TRUE
+# DESCRIPCIÓN: Este script recrea las tablas desde cero si RESET_DB = TRUE
 # ==============================================================================
 TEST_MODE <- Sys.getenv("TEST_MODE") == "false"
 
@@ -17,26 +17,30 @@ if (TEST_MODE) {
   # -----------------------------
   #  Configuración
   # -----------------------------
-  RESET_DB <- TRUE   # TRUE = recrea DB y tablas desde cero
-  DB_NAME  <- "clinic"
+  RESET_DB <- TRUE   # TRUE = recrea tablas desde cero
   
   # -----------------------------
-  #  Recrear base de datos
+  #  Crear tablas (con borrado previo seguro para Heroku/JawsDB)
   # -----------------------------
   if (RESET_DB) {
     tryCatch({
-      dbExecute(pool, paste0("DROP DATABASE IF EXISTS ", DB_NAME, ";"))
-      dbExecute(pool, paste0("CREATE DATABASE ", DB_NAME, " DEFAULT CHARACTER SET utf8mb4;"))
-      dbExecute(pool, paste0("USE ", DB_NAME, ";"))
-      message("Base de datos '", DB_NAME, "' recreada desde cero.")
+      # Borramos las tablas en orden inverso para que no haya problemas de claves foráneas
+      dbExecute(pool, "DROP TABLE IF EXISTS historico_diagnosticos;")
+      dbExecute(pool, "DROP TABLE IF EXISTS historico_stock;")
+      dbExecute(pool, "DROP TABLE IF EXISTS solicitudes_citas;")
+      dbExecute(pool, "DROP TABLE IF EXISTS contacto;")
+      dbExecute(pool, "DROP TABLE IF EXISTS tratamientos;")
+      dbExecute(pool, "DROP TABLE IF EXISTS pedidos_laboratorio;")
+      dbExecute(pool, "DROP TABLE IF EXISTS citas;")
+      dbExecute(pool, "DROP TABLE IF EXISTS pacientes;")
+      dbExecute(pool, "DROP TABLE IF EXISTS notas_clinicas;")
+      dbExecute(pool, "DROP TABLE IF EXISTS usuarios;")
+      message("Tablas antiguas borradas con éxito (si existían).")
     }, error = function(e) {
-      stop("No se pudo recrear la base de datos: ", e$message)
+      message("Aviso al borrar tablas: ", e$message)
     })
   }
-  
-  # -----------------------------
-  #  Crear tablas
-  # -----------------------------
+
   dbExecute(pool, "
   CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,7 +49,7 @@ if (TEST_MODE) {
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(100),
     telefono VARCHAR(20),
-    tipo_usuario ENUM('admin','recepcion','doctor','paciente','higienista', 'laboratorio') DEFAULT 'paciente',
+    tipo_usuario ENUM('admin','recepcion','doctor','paciente','higienista', 'laboratorio', 'comercial') DEFAULT 'paciente',
     banneado INT DEFAULT 1, -- 1 = Activo, 0 = Baneado
     reset_token VARCHAR(255) NULL,
     token_expiry DATETIME NULL, 
@@ -323,7 +327,7 @@ CREATE TABLE IF NOT EXISTS historico_diagnosticos (
     # ID 1: Admin
     insert_user("admin", "Administrador", "1234", "lucia@gmail.com", "123456789", "admin")
     # ID 2: Laboratorio
-    insert_user("lab1", "Cofares Lab", "1234", "lab@cofares.com", "123456789", "laboratorio")
+    insert_user("lab1", "Clinident Lab", "1234", "lab@cofares.com", "123456789", "laboratorio")
     # ID 3: El Doctor (Muy importante para citas y notas)
     insert_user("doctor1", "Dr. Pérez Jiménez", "medico1", "drperez@clinica.com", "555123456", "doctor")
     # ID 4: Personal
@@ -332,6 +336,11 @@ CREATE TABLE IF NOT EXISTS historico_diagnosticos (
     insert_user("paciente1", "Juan Pérez", "1234", "lucia.dominguez.rodrigo@gmail.com", "000000000", "paciente")
     # ID 6: Segundo paciente (Lucía)
     insert_user("paciente2", "Lucía Domínguez", "1234", "lucia@gmail.com", "000000000", "paciente")
+
+    insert_user("higienista1", "Celia Garcia Urbanos", "1234", "lucia@gmail.com", "000000000", "higienista")
+
+    insert_user("comercial1", "Depósito Dental Pro", "1234", "ventas@deposito.com", "600000000", "comercial")
+
     
     insert_paciente("Juan Pérez", "juan@correo.com", "600111222", "1985-04-12")
     insert_paciente("María López", "maria@correo.com", "600333444", "1990-09-05")

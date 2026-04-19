@@ -60,40 +60,55 @@ diagnosticoServer <- function(id, pool, current_user) {
     
     # --- 5. EVENTO: REALIZAR PREDICCIÓN (Botón Analizar) ---
     observeEvent(input$btn_analizar, {
-      # Si por algún motivo el modelo no cargó al inicio, intentamos cargar ahora
-      if(is.null(v_modelo_entrenado())) {
-        ejecutar_sincronizacion_ia(mostrar_alerta = FALSE)
-      }
-      
-      # Si sigue siendo NULL, abortamos
-      req(v_modelo_entrenado())
-      
-      # Recopilar datos de los inputs
-      datos_paciente <- data.frame(
-        edad = input$edad,
-        indice_placa = input$placa,
-        sangrado_sondaje = input$sangrado,
-        profundidad_bolsa_max = input$bolsa,
-        es_fumador = as.numeric(input$fumador)
-      )
-      
-      # Predicción
-      probs <- predict(v_modelo_entrenado(), datos_paciente, type = "prob")
-      
-      df_res <- data.frame(
-        Categoria = c("Salud Normal", "Caries", "Periodontitis"),
-        Probabilidad = as.numeric(probs)
-      )
-      
-      v_ultimo_resultado(df_res)
-      
-      # GUARDAR EL CASO EN LA BBDD (Alimentar el sistema)
-      diag_final <- df_res$Categoria[which.max(df_res$Probabilidad)]
-      dbExecute(pool, 
-                "INSERT INTO historico_diagnosticos (edad, indice_placa, sangrado_sondaje, profundidad_bolsa_max, es_fumador, diagnostico_final) 
-                 VALUES (?, ?, ?, ?, ?, ?)",
-                params = list(input$edad, input$placa, input$sangrado, input$bolsa, as.numeric(input$fumador), diag_final))
-    })
+  # --- 1. Verificar si el modelo está cargado ---
+  if (is.null(v_modelo_entrenado())) {
+    ejecutar_sincronizacion_ia(mostrar_alerta = FALSE)
+  }
+  req(v_modelo_entrenado())
+  
+  modelo_obj <- v_modelo_entrenado()  # lista con $modelo y $niveles
+  
+  # --- 2. Recopilar datos del paciente ---
+  datos_paciente <- data.frame(
+    edad = as.numeric(input$edad),
+    indice_placa = as.numeric(input$placa),
+    sangrado_sondaje = as.numeric(input$sangrado),
+    profundidad_bolsa_max = as.numeric(input$bolsa),
+    es_fumador = as.numeric(input$fumador)
+  )
+  
+  # --- 3. Crear DMatrix para XGBoost ---
+  dtest <- xgb.DMatrix(data = as.matrix(datos_paciente))
+  
+  # --- 4. Predicción de probabilidades ---
+  pred_vector <- predict(modelo_obj$modelo, dtest)
+  
+  num_class <- length(modelo_obj$niveles)
+  pred_matrix <- matrix(pred_vector, ncol = num_class, byrow = TRUE)
+  
+  probs <- pred_matrix[1, ]  # si es un solo paciente
+  
+  # --- 5. Guardar resultados en un data.frame ---
+  df_res <- data.frame(
+    Categoria = modelo_obj$niveles,
+    Probabilidad = probs
+  )
+  
+  v_ultimo_resultado(df_res)
+  
+  # --- 6. Guardar el caso en la base de datos ---
+  diag_final <- df_res$Categoria[which.max(df_res$Probabilidad)]
+  
+  dbExecute(pool, 
+            "INSERT INTO historico_diagnosticos 
+            (edad, indice_placa, sangrado_sondaje, profundidad_bolsa_max, es_fumador, diagnostico_final) 
+            VALUES (?, ?, ?, ?, ?, ?)",
+            params = list(
+              input$edad, input$placa, input$sangrado, input$bolsa,
+              as.numeric(input$fumador), diag_final
+            ))
+})
+    
     
     # --- 6. RENDERIZADO DE RESULTADOS ---
     

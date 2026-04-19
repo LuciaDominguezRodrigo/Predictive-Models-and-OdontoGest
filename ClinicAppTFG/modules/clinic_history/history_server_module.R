@@ -1,5 +1,4 @@
 library(rmarkdown)
-library(pagedown)
 
 historyServer <- function(id, pool, current_user, active_tab) {
   moduleServer(id, function(input, output, session) {
@@ -158,7 +157,7 @@ historyServer <- function(id, pool, current_user, active_tab) {
       showNotification("Nota guardada", type = "message")
     })
     
-    # ---------------- 6. PDF ----------------
+    # ---------------- 6. PDF NATIVO (SIN CHROMIUM) ----------------
     output$descargar_pdf <- downloadHandler(
       filename = function() {
         paste0("Historial_", input$select_paciente, "_", Sys.Date(), ".pdf")
@@ -166,10 +165,8 @@ historyServer <- function(id, pool, current_user, active_tab) {
       content = function(file) {
         req(input$select_paciente)
         
-        info_pac <- DBI::dbGetQuery(pool,
-                                    "SELECT nombre FROM usuarios WHERE id = ?",
-                                    params = list(input$select_paciente)
-        )
+        # 1. Obtener datos
+        info_pac <- DBI::dbGetQuery(pool, "SELECT nombre FROM usuarios WHERE id = ?", params = list(input$select_paciente))
         
         eventos <- DBI::dbGetQuery(pool, "
           (SELECT fecha_inicio AS fecha, tipo_servicio AS titulo, observaciones AS detalle, 'Cita' AS tipo FROM citas WHERE paciente_id = ?)
@@ -178,53 +175,42 @@ historyServer <- function(id, pool, current_user, active_tab) {
           ORDER BY fecha DESC
         ", params = list(input$select_paciente, input$select_paciente))
         
-        temp_rmd  <- file.path(tempdir(), "reporte.Rmd")
-        temp_html <- file.path(tempdir(), "reporte.html")
+        # 2. Preparar archivos temporales
+        temp_rmd <- file.path(tempdir(), "reporte.Rmd")
+        temp_pdf <- file.path(tempdir(), "reporte.pdf")
         
+        # 3. Escribir plantilla RMarkdown con salida a pdf_document
         writeLines(c(
           "---",
           "title: 'Informe Historial Clínico'",
-          "output: html_document",
+          "output: pdf_document",
           "params:",
           "  paciente: NA",
           "  eventos: NA",
           "---",
-          
           "```{r setup, include=FALSE}",
           "library(knitr)",
           "eventos <- params$eventos",
           "```",
-          
           "## Paciente",
           "`r params$paciente`",
-          
           "## Historial",
-          
           "```{r, echo=FALSE}",
           "knitr::kable(eventos[,c('fecha','tipo','titulo','detalle')])",
           "```"
-          
         ), temp_rmd)
         
+        # 4. Renderizar usando el motor nativo
         rmarkdown::render(
-          temp_rmd,
-          output_file = temp_html,
-          params = list(
-            paciente = info_pac$nombre,
-            eventos = eventos
-          ),
-          envir = new.env(parent = globalenv())
+          temp_rmd, 
+          output_file = temp_pdf, 
+          params = list(paciente = info_pac$nombre, eventos = eventos), 
+          envir = new.env(parent = globalenv()), 
+          quiet = TRUE
         )
         
-        Sys.sleep(2)
-        
-        pagedown::chrome_print(
-          input = temp_html,
-          output = file,
-          wait = 5,
-          timeout = 60,
-          options = list(printBackground = TRUE)
-        )
+        # 5. Mover al destino final del manejador de descargas
+        file.copy(temp_pdf, file)
       }
     )
     

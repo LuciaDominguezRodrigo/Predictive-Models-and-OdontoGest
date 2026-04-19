@@ -165,19 +165,31 @@ stockServer <- function(id, pool, current_user) {
       updateNumericInput(session, "nuevo_prod_cant", value = 1)
     })
     # 6. EVENTO: Guardar pedido editado en la BBDD
-    observeEvent(input$confirmar_pedido_final, {
-      df_final <- v_datos_tabla()
-      
-      # Crear cadena de texto con el pedido final (incluyendo tus ediciones)
-      lineas_pedido <- paste("-", df_final$producto, ":", df_final$sugerencia_ia, "uds.", collapse = "\n")
-      texto_bbdd <- paste("PEDIDO IA VALIDADO\nFecha:", Sys.Date(), "\n\nDetalle:\n", lineas_pedido)
-      
-      dbExecute(pool, 
-                "INSERT INTO pedidos_laboratorio (doctor_id, laboratorio_id, paciente_nombre, descripcion, estado, tipo_pedido) 
-                 VALUES (?, 2, 'ALMACÉN IA', ?, 'pendiente', 'material')",
-                params = list(current_user()$id, texto_bbdd))
-      
-      shinyalert::shinyalert("¡Pedido Enviado!", "Se ha registrado el pedido en la base de datos.", type = "success")
-    })
+  observeEvent(input$confirmar_pedido_final, {
+  df_final <- v_datos_tabla()
+  
+  # 1. Buscar el ID del primer usuario que sea 'comercial'
+    comercial_info <- dbGetQuery(pool, "SELECT id FROM usuarios WHERE tipo_usuario = 'comercial' LIMIT 1")
+    
+    if(nrow(comercial_info) == 0) {
+      shinyalert::shinyalert("Error", "No existe un usuario 'comercial' en la base de datos.", type = "error")
+      return()
+    }
+    
+    id_destinatario <- comercial_info$id[1]
+    
+    # 2. Preparar el texto
+    lineas_pedido <- paste("-", df_final$producto, ":", df_final$sugerencia_ia, "uds.", collapse = "\n")
+    texto_bbdd <- paste("PEDIDO IA VALIDADO\nFecha:", Sys.Date(), "\n\nDetalle:\n", lineas_pedido)
+    
+    # 3. Insertar con tipo_pedido = 'material'
+    dbExecute(pool, 
+              "INSERT INTO pedidos_laboratorio (doctor_id, laboratorio_id, paciente_nombre, descripcion, estado, tipo_pedido) 
+              VALUES (?, ?, 'ALMACÉN IA', ?, 'pendiente', 'material')",
+              params = list(current_user()$id, id_destinatario, texto_bbdd))
+    
+    shinyalert::shinyalert("¡Pedido Enviado!", "Se ha registrado el pedido para el Comercial.", type = "success")
   })
+  
+}) # <-- ESTA ES LA QUE FALTABA
 }

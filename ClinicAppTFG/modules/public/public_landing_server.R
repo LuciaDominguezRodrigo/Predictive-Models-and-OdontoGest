@@ -1,3 +1,6 @@
+library(shinyjs)
+
+
 landingServer <- function(id, show_view, pool) { # <--- Añadido 'pool'
   moduleServer(id, function(input, output, session) {
     
@@ -15,6 +18,13 @@ landingServer <- function(id, show_view, pool) { # <--- Añadido 'pool'
         showNotification("Por favor, rellena todos los campos.", type = "warning")
         return()
       }
+
+      email_regex <- "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+
+    if (!grepl(email_regex, trimws(input$contact_email))) {
+      showNotification("Introduce un email válido.", type = "error")
+       return()
+  }
       
       # Guardar en Base de Datos
       tryCatch({

@@ -10,7 +10,7 @@ mainUI <- function(id) {
              div(class = "container-fluid px-lg-4",
                  div(class = "navbar-brand d-flex flex-column",
                      span(class = "fw-bold text-purple mb-0 h4", textOutput(ns("welcome"), inline = TRUE)),
-                     span(class = "text-muted small", "Panel de Control v2.0")
+                     span(class = "text-muted small", "Panel de Control")
                  ),
                  
                  tags$button(

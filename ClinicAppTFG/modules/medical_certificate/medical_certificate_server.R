@@ -2,6 +2,8 @@ library(shiny)
 library(DBI)
 library(htmltools)
 library(webshot2)
+library(rmarkdown)
+
 
 certificateServer <- function(id, pool, current_user) {
   moduleServer(id, function(input, output, session) {
@@ -45,51 +47,73 @@ certificateServer <- function(id, pool, current_user) {
     })
     
     # 3. Handler de descarga con bloqueo de seguridad
+    # 3. Handler de descarga UNIFICADO (Usa RMarkdown/LaTeX en lugar de Webshot)
     output$download_pdf <- downloadHandler(
       filename = function() {
         paste0("Justificante_", Sys.Date(), ".pdf")
       },
       content = function(file) {
-        # Bloquear UI para evitar clics dobles mientras webshot trabaja
+        req(input$cita_seleccionada)
+        
+        # Bloquear UI para evitar clics dobles
         shinyjs::disable("download_pdf")
         on.exit(shinyjs::enable("download_pdf"))
-        
-        req(input$cita_seleccionada)
         
         # Obtener datos específicos de la cita
         df <- citas_completadas()
         cita <- df[df$id == input$cita_seleccionada, ]
         
-        # Generar contenido HTML con estilo para el PDF
-        html_doc <- htmltools::tags$html(
-          htmltools::tags$body(
-            style = "font-family: Arial, sans-serif; padding: 50px; color: #333;",
-            htmltools::tags$div(
-              style = "text-align: center; margin-bottom: 30px;",
-              htmltools::tags$h1("JUSTIFICANTE MÉDICO", style = "color: #6a1b9a;"),
-              htmltools::tags$hr()
-            ),
-            htmltools::tags$div(
-              style = "line-height: 2; font-size: 16px;",
-              htmltools::tags$p(strong("PACIENTE: "), current_user()$nombre),
-              htmltools::tags$p(strong("FECHA: "), format(as.POSIXct(cita$fecha_inicio), "%d/%m/%Y %H:%M")),
-              htmltools::tags$p(strong("ESPECIALIDAD: "), cita$tipo_servicio),
-              htmltools::tags$p(strong("DOCTOR/A: "), cita$doctor)
-            ),
-            htmltools::tags$br(),
-            htmltools::tags$p("Se confirma la asistencia del paciente a nuestra clínica en la fecha y hora indicadas para recibir tratamiento facultativo."),
-            htmltools::tags$div(
-              style = "margin-top: 80px; text-align: right;",
-              htmltools::tags$p("Firmado: Dirección del Centro Médico"),
-              htmltools::tags$p(format(Sys.Date(), "%d/%m/%Y"), style = "color: #888;")
-            )
-          )
+        # 1. Preparar archivos temporales
+        temp_rmd <- file.path(tempdir(), "justificante.Rmd")
+        temp_pdf <- file.path(tempdir(), "justificante.pdf")
+        
+        # 2. Crear la plantilla RMarkdown (Estilo similar al historial clínico)
+        writeLines(c(
+          "---",
+          "title: 'JUSTIFICANTE MÉDICO'",
+          "output: pdf_document",
+          "params:",
+          "  paciente: NA",
+          "  fecha: NA",
+          "  especialidad: NA",
+          "  doctor: NA",
+          "---",
+          "",
+          "## Información de la Cita",
+          "---",
+          "**PACIENTE:** `r params$paciente`  ",
+          "**FECHA:** `r params$fecha`  ",
+          "**ESPECIALIDAD:** `r params$especialidad`  ",
+          "**DOCTOR/A:** `r params$doctor`  ",
+          "",
+          "\\vspace{2cm}",
+          "",
+          "Se confirma la asistencia del paciente a nuestra clínica en la fecha y hora indicadas para recibir tratamiento facultativo.",
+          "",
+          "\\vspace{3cm}",
+          "",
+          "\\begin{flushright}",
+          "Firmado: Dirección del Centro Médico  ",
+          paste0("Fecha de emisión: ", format(Sys.Date(), "%d/%m/%Y")),
+          "\\end{flushright}"
+        ), temp_rmd)
+        
+        # 3. Renderizar usando el motor nativo
+        rmarkdown::render(
+          temp_rmd, 
+          output_file = temp_pdf, 
+          params = list(
+            paciente = current_user()$nombre,
+            fecha = format(as.POSIXct(cita$fecha_inicio), "%d/%m/%Y %H:%M"),
+            especialidad = cita$tipo_servicio,
+            doctor = cita$doctor
+          ), 
+          envir = new.env(parent = globalenv()), 
+          quiet = TRUE
         )
         
-        # Proceso de renderizado PDF
-        tmp <- tempfile(fileext = ".html")
-        htmltools::save_html(html_doc, tmp)
-        webshot2::webshot(tmp, file)
+        # 4. Entregar el archivo
+        file.copy(temp_pdf, file)
       }
     )
   })

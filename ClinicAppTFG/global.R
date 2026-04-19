@@ -11,7 +11,15 @@ library(sodium)
 is_test <- identical(Sys.getenv("TESTTHAT"), "true")
 
 # Cargar variables de entorno
-load_dot_env(".env")
+# Cambia esto:
+# load_dot_env(".env")
+
+# Por esto:
+tryCatch({
+  load_dot_env(".env")
+}, error = function(e) {
+  message("No se encontró archivo .env. Leyendo variables del sistema.")
+})
 
 db_host     <- Sys.getenv("DB_HOST")
 db_port     <- as.integer(Sys.getenv("DB_PORT"))
@@ -39,6 +47,10 @@ if (!is_test) {
 # Zona horaria
 Sys.setenv(TZ = "Europe/Madrid")
 
-Sys.setenv(
-  PAGEDOWN_CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe"
-)
+# Solo configura la ruta de Windows si estás en entorno local
+if (Sys.info()[["sysname"]] == "Windows") {
+  Sys.setenv(PAGEDOWN_CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe")
+} else {
+  # En Linux/Docker (Heroku) usaremos la ruta por defecto de Chromium instalada
+  Sys.setenv(PAGEDOWN_CHROME = "google-chrome") 
+}

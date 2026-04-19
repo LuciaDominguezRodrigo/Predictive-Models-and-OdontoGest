@@ -44,7 +44,7 @@ userManagementServer <- function(id, pool, user_session) {
       
       # SEGURIDAD: Recepción solo ve pacientes
       if (current_user$tipo_usuario == "recepcion") {
-        df <- df[df$tipo_usuario == "paciente", ]
+        df <- df[df$tipo_usuario != "admin", ]
       }
       
       if (nrow(df) == 0) return(p(class="text-muted italic", "No hay otros usuarios registrados bajo su nivel de acceso."))
@@ -173,7 +173,7 @@ userManagementServer <- function(id, pool, user_session) {
       }
       
       # Bloqueo: Recepcionistas no crean otros roles
-      if (user_info$tipo_usuario == "recepcion" && tipo != "paciente") {
+      if (user_info$tipo_usuario == "recepcion" && !(tipo %in% c("paciente", "laboratorio", "comercial", "doctor", "higienista"))) {
         showNotification("No tienes permisos para crear este tipo de usuario.", type = "error")
         return()
       }

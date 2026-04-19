@@ -5,10 +5,30 @@ mainServer <- function(id, current_user, user_logged, pool) {
     # 1. Estado de la pestaña (inicial NULL para evitar arrastres)
     active_tab <- reactiveVal(NULL)
     
+   # ---------------- 1. LEER LA URL (Curar la amnesia) ----------------
     observeEvent(user_logged(), {
       if (isTRUE(user_logged())) {
-        active_tab("perfil")
+        # Leemos qué dice la barra de direcciones del navegador
+        query <- parseQueryString(session$clientData$url_search)
+        
+        # Si la URL dice "?page=dashboard&tab=citas", rescatamos "citas"
+        if (!is.null(query[["tab"]])) {
+          active_tab(query[["tab"]])
+        } else {
+          # Si entramos limpios por primera vez, vamos al perfil
+          active_tab("perfil")
+        }
       }
+    }, ignoreInit = TRUE)
+
+    # ---------------- 2. ESCRIBIR EN LA URL ----------------
+    observeEvent(active_tab(), {
+      req(active_tab())
+      # Construimos la nueva URL con la pestaña actual
+      nueva_url <- paste0("?page=dashboard&tab=", active_tab())
+      
+      # Empujamos la URL al navegador sin recargar la página
+      updateQueryString(nueva_url, mode = "push", session = session)
     }, ignoreInit = TRUE)
     
     output$welcome <- renderText({ 
@@ -71,6 +91,12 @@ mainServer <- function(id, current_user, user_logged, pool) {
           list(id = "diagnostico_ia", label = "Diagnóstico IA")
         ))
       }
+
+      if (current_user()$tipo_usuario == 'comercial') {
+        opciones <- append(opciones, list(
+          list(id = "pedidos_comercial", label = "Pedidos de Material")
+        ))
+      } 
       
       lapply(opciones, function(opc) {
         es_activo <- if(!is.null(active_tab()) && active_tab() == opc$id) {
@@ -96,6 +122,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
     observeEvent(input$btn_gestion_lab, { active_tab("gestion_lab") })
     observeEvent(input$btn_gestion_stock, { active_tab("gestion_stock") })
     observeEvent(input$btn_diagnostico_ia, { active_tab("diagnostico_ia") })
+    observeEvent(input$btn_pedidos_comercial, { active_tab("pedidos_comercial") })
     
     # ---------------- CONTENIDO ----------------
     output$tab_content <- renderUI({
@@ -134,7 +161,9 @@ mainServer <- function(id, current_user, user_logged, pool) {
                  "gestion_stock" = div(class="bg-white p-4 rounded shadow-sm border", 
                                        stockUI(ns("stock_mod"))),
                  "diagnostico_ia" = div(class="bg-white p-4 rounded shadow-sm border", 
-                                        diagnosticoUI(ns("diag_mod")))
+                                        diagnosticoUI(ns("diag_mod"))),
+                 "pedidos_comercial" = div(class="bg-white p-4 rounded shadow-sm border", 
+                                        labUI(ns("pedidos_comercial")))
           )
       )
     })
@@ -150,6 +179,7 @@ mainServer <- function(id, current_user, user_logged, pool) {
     historyServer("history_mod", pool, current_user, active_tab) 
     certificateServer("justificantes",pool,current_user)
     labServer("pedidos_lab",pool,current_user)
+    labServer("pedidos_comercial", pool, current_user)
     stockServer("stock_mod", pool, current_user)
     diagnosticoServer("diag_mod", pool, current_user)
     

@@ -86,10 +86,10 @@ ui <- fluidPage(
   style = "padding: 0px; margin: 0px;", 
   useShinyjs(),
   tags$head(
-    tags$script(src = "script.js")
+    tags$script(src = "script.js"),
+    tags$link(rel = "icon", type = "image/png", href = "img/logo_odontogest.png")
   ),  
   
-  # ENVOLVEMOS TODO EN UN DIV ÚNICO
   div(id = "main-app-container",
       uiOutput("ui_landing"),
       uiOutput("ui_login"),
@@ -109,22 +109,26 @@ server <- function(input, output, session) {
   current_user <- reactiveVal(NULL)
   show_view    <- reactiveVal("LANDING") 
   
-  # Función para actualizar URL
   update_url <- function(page_name) {
     session$sendCustomMessage("update_url", page_name)
   }
-  
-  # 1. Detectar token de reset
+
   isolate({
     query <- parseQueryString(session$clientData$url_search)
     token <- query[['token']]
     page  <- query[['page']]
     
-    if (!is.null(token) && !is.null(page) && page == "reset_confirm") {
-      show_view("CONFIRM")
-      shinyjs::delay(150, {
-        runjs("history.replaceState({}, '', window.location.pathname + '?page=reset_confirm');")
-      })
+    if (!is.null(page)) {
+      if (page == "reset_confirm" && !is.null(token)) {
+        show_view("CONFIRM")
+        shinyjs::delay(150, {
+          runjs("history.replaceState({}, '', window.location.pathname + '?page=reset_confirm');")
+        })
+      } else if (page == "login") {
+        show_view("LOGIN")
+      } else if (page == "reset_password") {
+        show_view("RESET")
+      }
     }
   })
   
@@ -225,4 +229,6 @@ server <- function(input, output, session) {
 }
 
 # Lanzar App
-shinyApp(ui, server, options = list(port = 3841))
+# Por esto:
+# Lanzar App (El Procfile gestionará el puerto)
+shinyApp(ui, server)

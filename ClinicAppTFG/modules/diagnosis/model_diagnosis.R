@@ -1,50 +1,127 @@
-# ==============================================================================
-# INTEGRACIÓN: model_diagnosis.R (Basado fielmente en app.R)
-# ==============================================================================
-library(caret)
 library(xgboost)
 library(dplyr)
+library(DBI)
 
-# 1. Carga de datos desde la BBDD
-# Adaptamos las columnas para que coincidan con la lógica de entrenamiento
+# =========================
+# 1. CARGA DE DATOS
+# =========================
 cargar_datos_diagnostico <- function(pool) {
-  df <- dbGetQuery(pool, "SELECT edad, indice_placa, sangrado_sondaje, profundidad_bolsa_max, es_fumador, diagnostico_final FROM historico_diagnosticos")
   
-  # Aseguramos que el target sea factor para clasificación (Igual que en app.R)
-  df$diagnostico_final <- as.factor(df$diagnostico_final)
+  df <- dbGetQuery(pool, "
+    SELECT 
+      edad, 
+      indice_placa, 
+      sangrado_sondaje, 
+      profundidad_bolsa_max, 
+      es_fumador, 
+      diagnostico_final 
+    FROM historico_diagnosticos
+  ")
+  
+  # Limpiar nombres de clases (MUY IMPORTANTE)
+  df$diagnostico_final <- as.factor(make.names(df$diagnostico_final))
+  
+  # Eliminar NA
+  df <- na.omit(df)
+  
   return(df)
 }
 
-# 2. Entrenamiento (Copiando los hiperparámetros de tu app.R)
+# =========================
+# 2. ENTRENAMIENTO
+# =========================
 entrenar_modelo_diagnostico <- function(df) {
   
-  # Mismo control de entrenamiento (Cross-Validation)
-  control <- trainControl(
-    method = "cv", 
-    number = min(5, nrow(df)),
-    classProbs = TRUE, # Necesario para ver las barras de probabilidad
-    summaryFunction = multiClassSummary
-  )
+  target_col <- "diagnostico_final"
   
-  # Mismos hiperparámetros de XGBoost que usaste en el prototipo
-  grid_xgb <- expand.grid(
-    nrounds = 100,         # Aumentado para igualar app.R
-    max_depth = 6,         # Mayor profundidad para captar relaciones complejas
-    eta = 0.1,             # Learning rate más fino
-    gamma = 0, 
-    colsample_bytree = 0.8, 
-    min_child_weight = 1, 
+  # Target
+  y_factor <- as.factor(df[[target_col]])
+  y <- as.numeric(y_factor) - 1  # requerido por xgboost
+  
+  # Features
+  X <- df %>%
+    select(-all_of(target_col)) %>%
+    mutate(across(everything(), as.numeric)) %>%
+    as.matrix()
+  
+  # DMatrix
+  dtrain <- xgb.DMatrix(data = X, label = y)
+  
+  # Número de clases
+  num_class <- length(levels(y_factor))
+  
+  # Parámetros
+  params <- list(
+    objective = "multi:softprob",
+    num_class = num_class,
+    eval_metric = "mlogloss",
+    max_depth = 6,
+    eta = 0.1,
+    gamma = 0,
+    colsample_bytree = 0.8,
+    min_child_weight = 1,
     subsample = 0.8
   )
   
-  modelo <- train(
-    diagnostico_final ~ .,
-    data = df,
-    method = "xgbTree",
-    trControl = control,
-    tuneGrid = grid_xgb,
-    na.action = na.pass
+  # Entrenar modelo
+  modelo <- xgb.train(
+    params = params,
+    data = dtrain,
+    nrounds = 100,
+    verbose = 0
   )
   
-  return(modelo)
+  return(list(
+    modelo = modelo,
+    niveles = levels(y_factor)
+  ))
+}
+
+# =========================
+# 3. PREDICCIÓN
+# =========================
+predecir_diagnostico <- function(modelo_obj, nuevos_datos) {
+  
+  modelo <- modelo_obj$modelo
+  niveles <- modelo_obj$niveles
+  
+  X_new <- nuevos_datos %>%
+    mutate(across(everything(), as.numeric)) %>%
+    as.matrix()
+  
+  dtest <- xgb.DMatrix(data = X_new)
+  
+  pred <- predict(modelo, dtest)
+  
+  num_class <- length(niveles)
+  
+  pred_matrix <- matrix(pred, ncol = num_class, byrow = TRUE)
+  
+  clases <- max.col(pred_matrix) - 1
+  
+  resultado <- factor(niveles[clases + 1], levels = niveles)
+  
+  return(resultado)
+}
+
+# =========================
+# 4. PIPELINE COMPLETO
+# =========================
+entrenar_y_guardar_modelo <- function(pool, ruta = "modelo_xgb.rds") {
+  
+  df <- cargar_datos_diagnostico(pool)
+  
+  if (nrow(df) < 10) {
+    stop("No hay suficientes datos para entrenar el modelo")
+  }
+  
+  modelo <- entrenar_modelo_diagnostico(df)
+  
+  saveRDS(modelo, ruta)
+  
+  return(TRUE)
+}
+
+cargar_modelo <- function(ruta = "modelo_xgb.rds") {
+  return(readRDS(ruta))
 }

@@ -80,7 +80,9 @@ userManagementUI <- function(id) {
                               choices = c("Paciente" = "paciente", 
                                           "Recepción" = "recepcion", 
                                           "Doctor" = "doctor",
-                                          "Higienista dental" = "higienista"
+                                          "Higienista dental" = "higienista", 
+                                          "Laboratorio" = "laboratorio",
+                                          "Comercial" = "comercial"
                                           ), 
                               width = "100%")
               )
