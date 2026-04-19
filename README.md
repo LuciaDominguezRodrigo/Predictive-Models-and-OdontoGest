@@ -22,7 +22,6 @@ You can access the live application here:
 
 The repository is organized into two main branches to separate the development environment from the production-ready deployment.
 
----
 
 ## 🌿 Branching Strategy
 
