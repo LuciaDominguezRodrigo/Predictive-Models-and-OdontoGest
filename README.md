@@ -13,11 +13,10 @@
 
 - [🌐 Live Application](#-live-application)
 - [📂 Project Structure & Branching Strategy](#-project-structure--branching-strategy)
-  - [🌿 Branching Strategy](#-branching-strategy)
   - [📁 Directory Structure (main branch)](#-directory-structure-main-branch)
+  - [🌿 Branching Strategy](#-branching-strategy)
 - [🧩 Module Architecture](#-module-architecture)
 - [📂 System Diagrams Repository](#-system-diagrams-repository)
-- [📊 Additional Resources (TFG Support)](#-additional-resources-tfg-support)
 - [🖥️ Local Deployment](#️-local-deployment)
   - [📥 Step 1: Download the repository](#-step-1-download-the-repository)
   - [📦 Step 2: Install required dependencies](#-step-2-install-required-dependencies)
@@ -51,6 +50,26 @@ You can access the live application here:
 
 The repository is organized into two main branches to separate the development environment from the production-ready deployment.
 
+## 📁 Directory Structure (main branch)
+
+```plaintext
+├── .github/workflows/       # CI/CD pipelines (GitHub Actions)
+├── ClinicAppTFG/            # 📦 Core Shiny Application
+│   ├── modules/             # UI/Server logic decoupled by functionality
+│   ├── tests/               # Unit and integration tests
+│   ├── www/                 # Static assets (CSS, Images, JS)
+│   ├── app.R                # Application entry point
+│   ├── global.R             # Global variables and library loading
+│   └── db_init.R            # Database connection and pooling logic
+├── modelos/                 # 🧠 Machine Learning Research
+│   ├── modeloDiagnostico/   # XGBoost training scripts and saved weights
+│   ├── modeloStock/         # Linear Regression scripts for inventory
+│   └── comparacion/         # Model evaluation metrics and SHAP analysis
+├── docs_readme/             # Documentation assets and diagrams
+├── .gitignore               # Files excluded from version control
+└── README.md                # Project documentation
+
+```
 
 ## 🌿 Branching Strategy
 
@@ -72,26 +91,7 @@ This branch includes:
 - Lightweight dependencies required for execution
 
 
-## 📁 Directory Structure (main branch)
 
-```plaintext
-├── .github/workflows/       # CI/CD pipelines (GitHub Actions)
-├── ClinicAppTFG/            # 📦 Core Shiny Application
-│   ├── modules/             # UI/Server logic decoupled by functionality
-│   ├── tests/               # Unit and integration tests
-│   ├── www/                 # Static assets (CSS, Images, JS)
-│   ├── app.R                # Application entry point
-│   ├── global.R             # Global variables and library loading
-│   └── db_init.R            # Database connection and pooling logic
-├── modelos/                 # 🧠 Machine Learning Research
-│   ├── modeloDiagnostico/   # XGBoost training scripts and saved weights
-│   ├── modeloStock/         # Linear Regression scripts for inventory
-│   └── comparacion/         # Model evaluation metrics and SHAP analysis
-├── docs_readme/             # Documentation assets and diagrams
-├── .gitignore               # Files excluded from version control
-└── README.md                # Project documentation
-
-```
 
 ## 🧩 Module Architecture
 
